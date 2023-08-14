@@ -14,6 +14,7 @@ namespace sharedservice.UnitofWork
         void CommitAsync();
         void RollbackAsync();
         void SaveChangesAsync();
+        void SetPropertyValue(object entity, string propertyName, object value);
         IGenericRepository<TEntity> GetRepository<TEntity>() where TEntity : class;
     }
 }

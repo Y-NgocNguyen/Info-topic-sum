@@ -2,7 +2,7 @@
 
 using sharedservice.Models;
 using sharedservice.Repository;
-
+using System.Reflection;
 
 namespace sharedservice.UnitofWork
 {
@@ -22,6 +22,7 @@ namespace sharedservice.UnitofWork
         public void BeginTransactionAsync()
         {
             _dbContext.Database.BeginTransaction();
+            
         }
 
         public void CommitAsync()
@@ -43,6 +44,14 @@ namespace sharedservice.UnitofWork
         public void SaveChangesAsync()
         {
              _dbContext.SaveChanges();
+        }
+        public void SetPropertyValue(object entity, string propertyName, object value)
+        {
+            PropertyInfo property = entity.GetType().GetProperty(propertyName);
+            if (property != null)
+            {
+                property.SetValue(entity, value);
+            }
         }
 
     }

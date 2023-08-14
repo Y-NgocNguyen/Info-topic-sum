@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿
+using Microsoft.AspNetCore.Mvc;
 using sharedservice.Models;
 
 
@@ -11,5 +12,9 @@ namespace CourseService.Interface
         ActionResult<Course> CreateCourse(Course course);
         ActionResult<Course> DeleteCourse(int id);
         IActionResult UpdateCourse(int id, Course course);
+        ActionResult DeleteCourseRange(int[] ids);
+        ActionResult AddCourseRange(Course[] courses);
+        ActionResult UpdateRangeOne(int[] entityIds, Dictionary<string, object> columnValues);
+        ActionResult UpdateRangeAny(Course[] courses);
     }
 }

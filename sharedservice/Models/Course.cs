@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
 
 namespace sharedservice.Models
 {
@@ -11,8 +12,9 @@ namespace sharedservice.Models
         }
         
         public int Id { get; set; }
+     
         public string Code { get; set; } = null!;
-        public float Price { get; set; }
+        public float? Price { get; set; }
         public string? Decription { get; set; }
 
         public virtual ICollection<Enrollment> Enrollments { get; set; }

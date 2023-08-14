@@ -3,7 +3,9 @@ using CourseService.Interface;
 using Microsoft.AspNetCore.Mvc;
 using sharedservice.Repository;
 using sharedservice.UnitofWork;
+using Microsoft.Extensions.Logging;
 
+using System.Collections.Immutable;
 
 namespace CourseService.Service
 {
@@ -12,12 +14,13 @@ namespace CourseService.Service
         private readonly IUnitOfWork _unitOfWork;
         private readonly IGenericRepository<Course> _db;
         private readonly IGenericRepository<Enrollment> _db2;
-
-        public CourseServiceB(IUnitOfWork unitOfWork)
+        private readonly ILogger<CourseServiceB> _logger;
+        public CourseServiceB(IUnitOfWork unitOfWork, ILogger<CourseServiceB> logger)
         {
             _unitOfWork = unitOfWork;
             _db = _unitOfWork.GetRepository<Course>();
             _db2 = _unitOfWork.GetRepository<Enrollment>();
+            _logger = logger;
         }
         /// <summary>
         /// Creates a new course and saves it to the database.
@@ -30,10 +33,27 @@ namespace CourseService.Service
             {
                 return new BadRequestResult();
             }
+            course.Price ??=  0.0f;
 
             _db.Add(course);
             _unitOfWork.SaveChangesAsync();
 
+            return new OkResult();
+        }
+        public ActionResult AddCourseRange(Course[] courses )
+        {
+            if(!courses.Any())
+            {
+                return new BadRequestResult();
+            }
+            courses = courses.Select(c =>
+            {
+                c.Price ??= 0.0f;
+                return c;
+            }).ToArray();
+
+            _db.AddRange(courses);
+            _unitOfWork.SaveChangesAsync();
             return new OkResult();
         }
         /// <summary>
@@ -55,13 +75,27 @@ namespace CourseService.Service
             _unitOfWork.SaveChangesAsync();
             return new NoContentResult();
         }
+        
+        public  ActionResult DeleteCourseRange(int[] ids)
+        {
+            var coursesDelete = _db.Find(c => ids.Contains(c.Id) );
+           
+            if (coursesDelete == null || coursesDelete.Count() != ids.Length)
+            {
+              return new NotFoundResult();
+            }
+            _db.RemoveRange(coursesDelete);
+            _unitOfWork.SaveChangesAsync();
+            return new OkResult();
+
+        }
+
         /// <summary>
         /// Retrieves all courses from the database.
         /// </summary>
         /// <returns>An ActionResult containing a collection of courses.</returns>
         public ActionResult<IEnumerable<Course>> GetAll()
-        {
-
+        { 
             return new OkObjectResult(
                 _db.GetAll().Select(c => new
             {
@@ -113,5 +147,42 @@ namespace CourseService.Service
             _unitOfWork.SaveChangesAsync();
             return new NoContentResult();
         }
+        /// <summary>
+        /// funciton test. has bug. not interested
+        /// </summary>
+        /// <param name="entityIds"></param>
+        /// <param name="columnValues"></param>
+        /// <returns></returns>
+        public ActionResult UpdateRangeOne(int[] entityIds, Dictionary<string, object> columnValues)
+        {
+            List<Course>  courses = _db.Find(c=> entityIds.Contains(c.Id)).ToList();
+         
+            _db.UpdateRangeOne(courses,columnValues);
+            _unitOfWork.SaveChangesAsync();
+            return new OkResult();
+        }
+        /// <summary>
+        /// Update courses with some property 
+        /// </summary>
+        /// <param name="courses"></param>
+        /// <returns></returns>
+        public ActionResult UpdateRangeAny(Course[] courses)
+        {
+
+            List<Course> updateCou = new List<Course>();
+            foreach (var course in courses)
+            {
+                var temp = _db.Find(e => e.Id == course.Id ).FirstOrDefault();
+                _db.entry(temp);
+                if (temp == null) new BadRequestResult();
+
+                updateCou.Add(_db.update2Oject(course, temp));
+            }
+            _db.UpdateRangeAny(updateCou);
+            _unitOfWork.SaveChangesAsync();
+            return new OkResult();
+        }
+
+
     }
 }

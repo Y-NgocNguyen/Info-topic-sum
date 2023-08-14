@@ -14,6 +14,12 @@ namespace sharedservice.Repository
         IEnumerable<T> Find(Expression<Func<T, bool>> expression);
         void Add(T entity);
         void Remove(T entity);
-
+        void RemoveRange(IEnumerable<T> entities);
+        void AddRange(IEnumerable<T> entities);
+ 
+        void UpdateRangeOne(List<T> targetData, Dictionary<string, object> columnValues);
+        void UpdateRangeAny(IEnumerable<T> entities);
+        void entry(T entity);
+         T update2Oject(T item, T newItem);
     }
 }
