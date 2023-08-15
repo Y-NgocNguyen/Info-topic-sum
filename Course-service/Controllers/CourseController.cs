@@ -76,24 +76,24 @@ namespace Course_service.Controllers
             return _courseService.UpdateCourse(id, course);
         }
 
-        [HttpDelete("deleteRange")]
+        [HttpDelete("Range")]
         public ActionResult DeletaRange([FromBody] int[] ids)
         {
             return _courseService.DeleteCourseRange(ids);
         }
-        [HttpPost("addRange")]
+        [HttpPost("Range")]
         public ActionResult addRange([FromBody] Course[] courses)
         {
             return _courseService.AddCourseRange(courses);
         }
-        [HttpPatch("updateRangeOne")]
+        [HttpPatch("RangeOne")]
         public ActionResult updateRangeOne([FromBody]UpDatePathOne upDatePathOne)
         {
            
             return _courseService.UpdateRangeOne(upDatePathOne.entityIds, upDatePathOne.columnValues);
         }
 
-        [HttpPatch("updateRangeAny")]
+        [HttpPatch("RangeAny")]
         public ActionResult updateRangeAny([FromBody]Course[] courses)
         {
             return _courseService.UpdateRangeAny(courses);
