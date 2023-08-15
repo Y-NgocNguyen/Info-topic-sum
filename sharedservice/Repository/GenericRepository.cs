@@ -115,6 +115,7 @@ namespace sharedservice.Repository
 
             PropertyInfo[] itemProperties = item.GetType().GetProperties();
 
+            List<MySqlParameter> parameters = new List<MySqlParameter>();
 
             foreach (PropertyInfo property in itemProperties)
             {
@@ -127,15 +128,16 @@ namespace sharedservice.Repository
                     elementId = value;
                     continue;
                 }
-                elementUpdate += $"{property.Name}='{value}',";
+                elementUpdate += $"{property.Name}=@{property.Name},";
+                parameters.Add(new MySqlParameter($"@{property.Name}", value));
             }
             elementUpdate = elementUpdate.Substring(0, elementUpdate.Length - 1);
 
-            string sql =
-                 $"UPDATE {typeof(T).Name}s SET {elementUpdate} WHERE  Id = {elementId} ";
+            string sql = 
+                $"UPDATE {typeof(T).Name}s SET {elementUpdate} WHERE Id = @Id";
+            parameters.Add(new MySqlParameter("@Id", elementId));
 
-
-            return _dbContext.Database.ExecuteSqlRaw(sql);
+            return _dbContext.Database.ExecuteSqlRaw(sql, parameters);
         }
     }
 }

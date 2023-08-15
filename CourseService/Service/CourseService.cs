@@ -4,9 +4,8 @@ using Microsoft.AspNetCore.Mvc;
 using sharedservice.Repository;
 using sharedservice.UnitofWork;
 using Microsoft.Extensions.Logging;
-
 using System.Collections.Immutable;
-using System.Reflection;
+
 
 namespace CourseService.Service
 {
@@ -183,7 +182,7 @@ namespace CourseService.Service
             catch (Exception ex)
             {
                 _unitOfWork.Rollback();
-                return new BadRequestResult();
+                return new BadRequestObjectResult(ex.Message);
             }
 
         }
