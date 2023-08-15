@@ -72,12 +72,12 @@ namespace EnrollmentService.Service
             {
                 EnrolledDate = DateTime.Now,
                 CouresId = request.cId,
-                UserId = request.uId,
-                Coures = course
+                UserId = request.uId
+              
             };
            
             _dbEn.Add(enrollment);
-            _unitOfWork.SaveChangesAsync();
+            _unitOfWork.SaveChanges();
             return new OkResult();
         }
 
@@ -113,7 +113,7 @@ namespace EnrollmentService.Service
 
             _dbEn.Remove(enrollment);
             
-            _unitOfWork.SaveChangesAsync();
+            _unitOfWork.SaveChanges();
 
             return new OkResult();
         }

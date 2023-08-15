@@ -19,13 +19,13 @@ namespace sharedservice.UnitofWork
         {
             return new GenericRepository<T>(_dbContext);
         }
-        public void BeginTransactionAsync()
+        public void BeginTransaction()
         {
             _dbContext.Database.BeginTransaction();
             
         }
 
-        public void CommitAsync()
+        public void Commit()
         {
              _dbContext.SaveChanges();
              _dbContext.Database.CurrentTransaction.Commit();
@@ -36,12 +36,12 @@ namespace sharedservice.UnitofWork
             _dbContext.Dispose();
         }
 
-        public void RollbackAsync()
+        public void Rollback()
         {
             _dbContext.Database.CurrentTransaction.Rollback();
         }
 
-        public void SaveChangesAsync()
+        public void SaveChanges()
         {
              _dbContext.SaveChanges();
         }

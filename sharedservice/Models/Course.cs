@@ -6,10 +6,10 @@ namespace sharedservice.Models
 {
     public partial class Course
     {
-        public Course()
+       /* public Course()
         {
             Enrollments = new HashSet<Enrollment>();
-        }
+        }*/
         
         public int Id { get; set; }
      
@@ -17,6 +17,6 @@ namespace sharedservice.Models
         public float? Price { get; set; }
         public string? Decription { get; set; }
 
-        public virtual ICollection<Enrollment> Enrollments { get; set; }
+       /* public virtual ICollection<Enrollment> Enrollments { get; set; }*/
     }
 }

@@ -10,10 +10,10 @@ namespace sharedservice.UnitofWork
     public interface IUnitOfWork : IDisposable
     {
 
-        void BeginTransactionAsync();
-        void CommitAsync();
-        void RollbackAsync();
-        void SaveChangesAsync();
+        void BeginTransaction();
+        void Commit();
+        void Rollback();
+        void SaveChanges();
         void SetPropertyValue(object entity, string propertyName, object value);
         IGenericRepository<TEntity> GetRepository<TEntity>() where TEntity : class;
     }

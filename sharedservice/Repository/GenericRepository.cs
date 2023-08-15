@@ -1,8 +1,8 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using MySqlConnector;
 using Newtonsoft.Json.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
-
 
 namespace sharedservice.Repository
 {
@@ -102,11 +102,40 @@ namespace sharedservice.Repository
                     { 
                         itemProperty.SetValue(item, newItemValue);
                     }
-                
-
                 }
             }
             return item;
+        }
+
+        public int UpdateSQLRaw(T item)
+        {
+            
+            string elementUpdate = "";
+            object elementId = "";
+
+            PropertyInfo[] itemProperties = item.GetType().GetProperties();
+
+
+            foreach (PropertyInfo property in itemProperties)
+            {
+                var value = property.GetValue(item);
+
+                if (value == null) continue;
+
+                if (property.Name.ToLower() == "id")
+                {
+                    elementId = value;
+                    continue;
+                }
+                elementUpdate += $"{property.Name}='{value}',";
+            }
+            elementUpdate = elementUpdate.Substring(0, elementUpdate.Length - 1);
+
+            string sql =
+                 $"UPDATE {typeof(T).Name}s SET {elementUpdate} WHERE  Id = {elementId} ";
+
+
+            return _dbContext.Database.ExecuteSqlRaw(sql);
         }
     }
 }

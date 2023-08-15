@@ -21,5 +21,6 @@ namespace sharedservice.Repository
         void UpdateRangeAny(IEnumerable<T> entities);
         void entry(T entity);
          T update2Oject(T item, T newItem);
+        int UpdateSQLRaw(T item);
     }
 }

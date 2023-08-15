@@ -10,6 +10,6 @@ namespace sharedservice.Models
         public string UserId { get; set; }
         public DateTime EnrolledDate { get; set; }
 
-        public virtual Course Coures { get; set; } = null!;
+       /* public virtual Course Coures { get; set; } = null!;*/
     }
 }

@@ -6,6 +6,7 @@ using sharedservice.UnitofWork;
 using Microsoft.Extensions.Logging;
 
 using System.Collections.Immutable;
+using System.Reflection;
 
 namespace CourseService.Service
 {
@@ -36,7 +37,7 @@ namespace CourseService.Service
             course.Price ??=  0.0f;
 
             _db.Add(course);
-            _unitOfWork.SaveChangesAsync();
+            _unitOfWork.SaveChanges();
 
             return new OkResult();
         }
@@ -53,7 +54,7 @@ namespace CourseService.Service
             }).ToArray();
 
             _db.AddRange(courses);
-            _unitOfWork.SaveChangesAsync();
+            _unitOfWork.SaveChanges();
             return new OkResult();
         }
         /// <summary>
@@ -72,7 +73,7 @@ namespace CourseService.Service
             
             _db.Remove(courses);
 
-            _unitOfWork.SaveChangesAsync();
+            _unitOfWork.SaveChanges();
             return new NoContentResult();
         }
         
@@ -85,7 +86,7 @@ namespace CourseService.Service
               return new NotFoundResult();
             }
             _db.RemoveRange(coursesDelete);
-            _unitOfWork.SaveChangesAsync();
+            _unitOfWork.SaveChanges();
             return new OkResult();
 
         }
@@ -144,7 +145,7 @@ namespace CourseService.Service
             coursedb.Price = course.Price;
             coursedb.Decription = course.Decription;
             coursedb.Code = course.Code;
-            _unitOfWork.SaveChangesAsync();
+            _unitOfWork.SaveChanges();
             return new NoContentResult();
         }
         /// <summary>
@@ -158,7 +159,7 @@ namespace CourseService.Service
             List<Course>  courses = _db.Find(c=> entityIds.Contains(c.Id)).ToList();
          
             _db.UpdateRangeOne(courses,columnValues);
-            _unitOfWork.SaveChangesAsync();
+            _unitOfWork.SaveChanges();
             return new OkResult();
         }
         /// <summary>
@@ -168,19 +169,23 @@ namespace CourseService.Service
         /// <returns></returns>
         public ActionResult UpdateRangeAny(Course[] courses)
         {
+            _unitOfWork.BeginTransaction();
 
-            List<Course> updateCou = new List<Course>();
-            foreach (var course in courses)
+            try
             {
-                var temp = _db.Find(e => e.Id == course.Id ).FirstOrDefault();
-                _db.entry(temp);
-                if (temp == null) new BadRequestResult();
-
-                updateCou.Add(_db.update2Oject(course, temp));
+                foreach (var course in courses)
+                {
+                    _db.UpdateSQLRaw(course);
+                }
+                _unitOfWork.Commit();
+                return new OkResult();
             }
-            _db.UpdateRangeAny(updateCou);
-            _unitOfWork.SaveChangesAsync();
-            return new OkResult();
+            catch (Exception ex)
+            {
+                _unitOfWork.Rollback();
+                return new BadRequestResult();
+            }
+
         }
 
 
