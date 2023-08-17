@@ -108,9 +108,9 @@ namespace sharedservice.Repository
             return _dbContext.Database.ExecuteSqlRaw(sql, parameters);
         }
 
-        public DbContext testContext()
+        public int RunSqlRaw(string sql)
         {
-            throw new NotImplementedException();
+            return _dbContext.Database.ExecuteSqlRaw(sql);
         }
 
         /*public DbContext testContext()

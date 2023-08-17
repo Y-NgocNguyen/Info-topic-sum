@@ -125,7 +125,13 @@ namespace CourseService.Service
           
         }
 
-
+        /// <summary>
+        /// Updates multiple courses in the database.
+        /// </summary>
+        /// <param name="courses">
+        /// The array of Course objects to update.
+        /// </param>
+        /// <returns>Generates and returns a SQL query to update the specified courses.</returns>
         public string UpdateRangeAny(Course[] courses)
         {
 
@@ -193,7 +199,8 @@ namespace CourseService.Service
             sqlfooter = sqlfooter.Substring(0, sqlfooter.Length - 1);
             sqlfooter += " );";
             sqlFinnal = sqlHeader + sqlbody + sqlfooter;
-            return sqlFinnal;
+            return _db.RunSqlRaw(sqlFinnal).ToString();
+           
         }
      
       /*  public bool UpdateRangeAny(Course[] courses)

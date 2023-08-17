@@ -20,7 +20,7 @@ namespace sharedservice.Repository
  
         void UpdateRangeOne(List<T> targetData, Dictionary<string, object> columnValues);
         void UpdateRangeAny(IEnumerable<T> entities);
-        DbContext testContext();
+        public int RunSqlRaw(string sql);
         int UpdateSQLRaw(T item);
     }
 }
