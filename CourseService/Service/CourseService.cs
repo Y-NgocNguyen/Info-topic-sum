@@ -176,7 +176,7 @@ namespace CourseService.Service
 
                     if (item.data.TryGetValue(nameProperties[k], out dynamic value))
                     {
-                        
+                        if(value != null)
                             sql += $"WHEN id = {item.id} THEN '{value}'  ";
                     }
                     if (i == items.Count - 1)
