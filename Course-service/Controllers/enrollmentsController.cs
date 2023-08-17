@@ -17,18 +17,20 @@ namespace Course_service.Controllers
         [HttpGet]
         public ActionResult<IEnumerable<Enrollment>> GetAllErollments()
         {
-            return _db.GetAllErollments();
+            return Ok(_db.GetAllErollments());
         }
         [HttpPost]
         public async Task<ActionResult> AddEnrollment([FromBody] Request request )
         {
-            return await _db.AddEnrollment(request);
+            await _db.AddEnrollment(request);
+            return Ok();
         }
 
         [HttpPut]
         public async Task<ActionResult> removeEnrollment([FromBody] Request request)
         {
-            return await _db.removeEnrollment(request);
+            await _db.removeEnrollment(request);
+            return Ok();
         }
 
     }

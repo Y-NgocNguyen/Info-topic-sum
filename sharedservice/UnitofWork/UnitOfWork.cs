@@ -8,9 +8,9 @@ namespace sharedservice.UnitofWork
 {
      public class UnitOfWork : IUnitOfWork
     {
-        private readonly courseContext _dbContext;
+        private readonly dbContext _dbContext;
         
-        public UnitOfWork(courseContext dbContext)
+        public UnitOfWork(dbContext dbContext)
         {
             _dbContext = dbContext;
         }

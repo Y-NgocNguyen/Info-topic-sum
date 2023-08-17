@@ -5,13 +5,13 @@ using Microsoft.EntityFrameworkCore.Metadata;
 
 namespace sharedservice.Models
 {
-    public partial class courseContext : DbContext
+    public partial class dbContext : DbContext
     {
-        public courseContext()
+        public dbContext()
         {
         }
 
-        public courseContext(DbContextOptions<courseContext> options)
+        public dbContext(DbContextOptions<dbContext> options)
             : base(options)
         {
         }

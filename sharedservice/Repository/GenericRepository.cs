@@ -9,44 +9,47 @@ namespace sharedservice.Repository
     public class GenericRepository<T> : IGenericRepository<T> where T : class
     {
         private readonly DbContext _dbContext;
+        private readonly DbSet<T> _dbSet;
 
         public GenericRepository(DbContext dbContext)
         {
             _dbContext = dbContext;
+            _dbSet = _dbContext.Set<T>();
+        }
+        public IQueryable<T> GetAll()
+        {
+            return _dbSet;
         }
         public void Add(T entity)
         {
-            _dbContext.Set<T>().Add(entity);
+            _dbSet.Add(entity);
         }
 
         public void AddRange(IEnumerable<T> entities)
         {
-             _dbContext.Set<T>().AddRange(entities);
+             _dbSet.AddRange(entities);
         }
 
-        public IEnumerable<T> Find(Expression<Func<T, bool>> expression)
+        public IQueryable<T> Find(Expression<Func<T, bool>> expression)
         {
-           return _dbContext.Set<T>().Where(expression);
+           return _dbSet.Where(expression);
         }
 
-        public IEnumerable<T> GetAll()
-        {
-            return _dbContext.Set<T>();
-        }
+        
 
         public T GetById(int id)
         {
-            return _dbContext.Set<T>().Find(id);
+            return _dbSet.Find(id);
         }
 
         public void Remove(T entity)
         {
-            _dbContext.Set<T>().Remove(entity);
+            _dbSet.Remove(entity);
         }
 
         public void RemoveRange(IEnumerable<T> entities)
         {
-            _dbContext.Set<T>().RemoveRange(entities);       
+            _dbSet.RemoveRange(entities);       
         }
 
         public void UpdateRangeOne(List<T> targetData, Dictionary<string, object> columnValues)
@@ -70,46 +73,11 @@ namespace sharedservice.Repository
         }
         public void UpdateRangeAny(IEnumerable<T> entities)
         {
-            _dbContext.Set<T>().UpdateRange(entities);
+            _dbSet.UpdateRange(entities);
         }
-        public void entry(T entity)
-        {
-            _dbContext.Entry(entity).State = EntityState.Detached;
-        }
-
-        /// <summary>
-        /// Updates the properties of the item object with newItem object.
-        /// If the value of an item property is null, it is replaced with property in newItem.
-        /// </summary>
-        /// <param name="item"></param>
-        /// <param name="newItem"></param>
-        /// <returns></returns>
-        public T update2Oject(T item,T newItem)
-        {
-            var itemProperties = item.GetType().GetProperties();
-            var newItemProperties = newItem.GetType().GetProperties();
-            List<Object> v = new List<Object>();
-            foreach (var itemProperty in itemProperties)
-            {
-                var newItemProperty = newItemProperties.FirstOrDefault(p => p.Name == itemProperty.Name);
-                if (newItemProperty != null)
-                {
-                    var itemValue = itemProperty.GetValue(item);
-                    var newItemValue = newItemProperty.GetValue(newItem);
-
-                   
-                    if (itemValue == null)
-                    { 
-                        itemProperty.SetValue(item, newItemValue);
-                    }
-                }
-            }
-            return item;
-        }
-
+ 
         public int UpdateSQLRaw(T item)
-        {
-            
+        {    
             string elementUpdate = "";
             object elementId = "";
 
@@ -139,5 +107,17 @@ namespace sharedservice.Repository
 
             return _dbContext.Database.ExecuteSqlRaw(sql, parameters);
         }
+
+        public DbContext testContext()
+        {
+            throw new NotImplementedException();
+        }
+
+        /*public DbContext testContext()
+        {
+
+            return _dbContext.Database;
+        }*/
     }
+
 }

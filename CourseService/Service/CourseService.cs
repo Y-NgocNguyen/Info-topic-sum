@@ -1,11 +1,10 @@
 ﻿using sharedservice.Models;
 using CourseService.Interface;
-using Microsoft.AspNetCore.Mvc;
 using sharedservice.Repository;
 using sharedservice.UnitofWork;
 using Microsoft.Extensions.Logging;
 using System.Collections.Immutable;
-
+using System.Reflection;
 
 namespace CourseService.Service
 {
@@ -27,25 +26,16 @@ namespace CourseService.Service
         /// </summary>
         /// <param name="course"> The course object to create. </param>
         /// <returns>An ActionResult</returns>
-        public ActionResult<Course> CreateCourse(Course course)
+        public Course CreateCourse(Course course)
         {
-            if (course == null)
-            {
-                return new BadRequestResult();
-            }
             course.Price ??=  0.0f;
-
             _db.Add(course);
             _unitOfWork.SaveChanges();
-
-            return new OkResult();
+            return course;
         }
-        public ActionResult AddCourseRange(Course[] courses )
+        public bool AddCourseRange(Course[] courses )
         {
-            if(!courses.Any())
-            {
-                return new BadRequestResult();
-            }
+            
             courses = courses.Select(c =>
             {
                 c.Price ??= 0.0f;
@@ -54,39 +44,31 @@ namespace CourseService.Service
 
             _db.AddRange(courses);
             _unitOfWork.SaveChanges();
-            return new OkResult();
+
+            return true;
         }
         /// <summary>
         /// Deletes a course from the database based on its ID.
         /// </summary>
         /// <param name="id">The ID of the course to delete.</param>
         /// <returns>An ActionResult</returns>
-        public ActionResult<Course> DeleteCourse(int id)
+        public void DeleteCourse(int id)
         {
             var courses = _db.Find(u => u.Id == id).FirstOrDefault();
-
-            if (courses == null)
-            {
-                return new NotFoundResult();
-            }
-            
+   
             _db.Remove(courses);
 
             _unitOfWork.SaveChanges();
-            return new NoContentResult();
+            
         }
         
-        public  ActionResult DeleteCourseRange(int[] ids)
+        public void DeleteCourseRange(int[] ids)
         {
             var coursesDelete = _db.Find(c => ids.Contains(c.Id) );
            
-            if (coursesDelete == null || coursesDelete.Count() != ids.Length)
-            {
-              return new NotFoundResult();
-            }
             _db.RemoveRange(coursesDelete);
             _unitOfWork.SaveChanges();
-            return new OkResult();
+             
 
         }
 
@@ -94,23 +76,17 @@ namespace CourseService.Service
         /// Retrieves all courses from the database.
         /// </summary>
         /// <returns>An ActionResult containing a collection of courses.</returns>
-        public ActionResult<IEnumerable<Course>> GetAll()
-        { 
-            return new OkObjectResult(
-                _db.GetAll().Select(c => new
-            {
-                c.Id,
-                c.Code,
-                c.Price,
-                c.Decription
-            }));
+        public IEnumerable<Course> GetAll()
+        {
+            return _db.GetAll();
         }
+
         /// <summary>
         /// Retrieves the details of a specific course from the database based on its ID.
         /// </summary>
         /// <param name="id">The ID of the course to retrieve.</param>
         /// <returns>An ActionResult containing the details of the course.</returns>
-        public ActionResult<Course> GetDetailCourse(int id)
+        public dynamic GetDetailCourse(int id)
         {
            
             var course = _db.Find(u=>u.Id == id).Select(c => new
@@ -120,11 +96,8 @@ namespace CourseService.Service
                 c.Price,
                 c.Code
             }).FirstOrDefault();
-            if (course == null)
-            {
-                return new NotFoundResult();
-            }
-            return new OkObjectResult(course);
+           
+            return course;
         }
         /// <summary>
         /// Updates the details of a specific course in the database based on its ID.
@@ -132,41 +105,98 @@ namespace CourseService.Service
         /// <param name="id"> ID of the course to update.</param>
         /// <param name="course"> updated course object.</param>
         /// <returns>An IActionResult</returns>
-        public IActionResult UpdateCourse(int id, Course course)
+        public Course? UpdateCourse(int id, Course course)
         {
             var coursedb = _db.Find(u => u.Id == id).FirstOrDefault();
 
-            if (coursedb == null)
+            try
             {
-                return new NotFoundResult();
+                coursedb.Price = course.Price;
+                coursedb.Decription = course.Decription;
+                coursedb.Code = course.Code;
+                _unitOfWork.SaveChanges();
+                return coursedb;
+            }
+            catch (Exception)
+            {
+
+                return null;
+            }
+          
+        }
+
+
+        public string UpdateRangeAny(Course[] courses)
+        {
+
+            List<(int id, Dictionary<string, dynamic> data)> items = new List<(int id, Dictionary<string, dynamic> data)>();
+
+            for (int i = 0; i < courses.Count(); i++)
+            {
+                Course e = courses[i];
+
+                Dictionary<string, dynamic> data = new Dictionary<string, dynamic>();
+
+                foreach (var property in typeof(Course).GetProperties())
+                {
+                    data[property.Name] = property.GetValue(e);
+                }
+
+                items.Add((e.Id, data));
             }
 
-            coursedb.Price = course.Price;
-            coursedb.Decription = course.Decription;
-            coursedb.Code = course.Code;
-            _unitOfWork.SaveChanges();
-            return new NoContentResult();
+           
+           
+
+            string[] nameProperties = typeof(Course).GetProperties().Select(e=> e.Name).ToArray();
+
+            string sqlFinnal = "";
+
+            string sqlHeader = "UPDATE courses SET ";
+            string sqlbody = "";
+            string sqlfooter = " WHERE courses.Id IN ( ";
+
+            for (int k = 0; k < nameProperties.Count();k++)
+            {
+                if (nameProperties[k].ToLower() == "id") continue;
+
+                sqlbody += nameProperties[k] + " = ";
+
+                string sql = "CASE ";
+                for (int i = 0; i < items.Count; i++)
+                {
+
+                    var item = items[i];
+
+                    if (item.data.TryGetValue(nameProperties[k], out dynamic value))
+                    {
+                        
+                            sql += $"WHEN id = {item.id} THEN '{value}'  ";
+                    }
+                    if (i == items.Count - 1)
+                    {
+                        sql += $"ELSE {nameProperties[k]} ";
+                    }
+
+                }
+                sql += "END,";
+                sqlbody += sql;
+            }
+
+            sqlbody = sqlbody.Substring(0, sqlbody.Length - 1);
+
+            for (int i = 0; i < items.Count; i++)
+            {
+                var item = items[i];
+                sqlfooter += $" {item.id} ,";
+            }
+            sqlfooter = sqlfooter.Substring(0, sqlfooter.Length - 1);
+            sqlfooter += " );";
+            sqlFinnal = sqlHeader + sqlbody + sqlfooter;
+            return sqlFinnal;
         }
-        /// <summary>
-        /// funciton test. has bug. not interested
-        /// </summary>
-        /// <param name="entityIds"></param>
-        /// <param name="columnValues"></param>
-        /// <returns></returns>
-        public ActionResult UpdateRangeOne(int[] entityIds, Dictionary<string, object> columnValues)
-        {
-            List<Course>  courses = _db.Find(c=> entityIds.Contains(c.Id)).ToList();
-         
-            _db.UpdateRangeOne(courses,columnValues);
-            _unitOfWork.SaveChanges();
-            return new OkResult();
-        }
-        /// <summary>
-        /// Update courses with some property 
-        /// </summary>
-        /// <param name="courses"></param>
-        /// <returns></returns>
-        public ActionResult UpdateRangeAny(Course[] courses)
+     
+      /*  public bool UpdateRangeAny(Course[] courses)
         {
             _unitOfWork.BeginTransaction();
 
@@ -177,16 +207,32 @@ namespace CourseService.Service
                     _db.UpdateSQLRaw(course);
                 }
                 _unitOfWork.Commit();
-                return new OkResult();
+                return true;
             }
             catch (Exception ex)
             {
                 _unitOfWork.Rollback();
-                return new BadRequestObjectResult(ex.Message);
+                return false;
             }
 
+        }*/
+        public dynamic test()
+        {
+            var listCourstId =  _db2.GetAll().Select(c => c.CouresId);
+
+            var jointb = from c in _db.GetAll()
+                         where listCourstId.Contains(c.Id)
+                         select c;
+                        
+            
+            return jointb;
         }
 
+        public bool UpdateRange(Course[] course)
+        {
+            return true;
+        }
 
+       
     }
 }

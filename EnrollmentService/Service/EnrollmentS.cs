@@ -1,6 +1,5 @@
 ﻿using EnrollmentService.Interface;
 using EnrollmentService.Unit;
-using Microsoft.AspNetCore.Mvc;
 using sharedservice.Models;
 using sharedservice.Repository;
 using sharedservice.UnitofWork;
@@ -26,7 +25,7 @@ namespace EnrollmentService.Service
         /// </summary>
         /// <param name="request">The enrollment request containing the course and user IDs.</param>
         /// <returns>An ActionResult </returns>
-        public async Task<ActionResult> AddEnrollment(Request request)
+        public async Task<Enrollment> AddEnrollment(Request request)
         {
             // check User exit
             HttpClient httpClient = new HttpClient();
@@ -34,13 +33,13 @@ namespace EnrollmentService.Service
 
             if (!response.IsSuccessStatusCode)
             {
-                return new NotFoundResult();
+                throw new Exception("not found");
             }
 
             // check unique
             if(_dbEn.Find(e => e.CouresId == request.cId && e.UserId == request.uId).FirstOrDefault() != null)
             {
-                return new ConflictResult();
+                throw new Exception("Unique");
             }
 
             //check course exit
@@ -49,12 +48,12 @@ namespace EnrollmentService.Service
 
             if(course == null)
             {
-                return new NotFoundObjectResult("Course exit");
+                throw new Exception("exting courst");
             }
             //check user's money
             if (responseContent.balanceAccount < course.Price)
             {
-                return new BadRequestObjectResult("not enough money");
+                throw new Exception("user not money");
             }
 
             //call Api sub money
@@ -65,7 +64,7 @@ namespace EnrollmentService.Service
             var response2 = await httpClient.PatchAsync(url, content);
             if (!response2.IsSuccessStatusCode)
             {
-                return new BadRequestResult();
+                throw new Exception(response2.RequestMessage.ToString());
             }
 
             Enrollment enrollment = new Enrollment()
@@ -78,19 +77,19 @@ namespace EnrollmentService.Service
            
             _dbEn.Add(enrollment);
             _unitOfWork.SaveChanges();
-            return new OkResult();
+            return enrollment;
         }
 
-        public ActionResult<IEnumerable<Enrollment>> GetAllErollments()
+        public IEnumerable<Enrollment> GetAllErollments()
         {
-            return new OkObjectResult(_dbEn.GetAll());
+            return _dbEn.GetAll();
         }
         /// <summary>
         /// Removes an enrollment for a course based on the provided request.
         /// </summary>
         /// <param name="request">The enrollment request containing the course and user IDs.</param>
         /// <returns>An ActionResult </returns>
-        public async Task<ActionResult> removeEnrollment(Request request)
+        public async Task removeEnrollment(Request request)
         {
             HttpClient httpClient = new HttpClient();
 
@@ -98,7 +97,7 @@ namespace EnrollmentService.Service
             Enrollment enrollment = _dbEn.Find(e => e.UserId == request.uId && e.CouresId == request.cId).FirstOrDefault();
             if (enrollment == null)
             {
-                return new NotFoundResult();
+                throw new Exception("Exing Enrollment");
             }
             // call api add money
             var content = new StringContent(request.cId.ToString(), Encoding.UTF8, "application/json");
@@ -108,14 +107,14 @@ namespace EnrollmentService.Service
 
             if (!response2.IsSuccessStatusCode)
             {
-                return new BadRequestResult();
+               throw new Exception(response2.RequestMessage.ToString());
             }
 
             _dbEn.Remove(enrollment);
             
             _unitOfWork.SaveChanges();
 
-            return new OkResult();
+           
         }
     }
 }

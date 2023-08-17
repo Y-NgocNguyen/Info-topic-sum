@@ -9,9 +9,9 @@ namespace Course_service.Controllers
     [Route("courses")]
     public class CourseController : Controller
     {
-        private readonly courseContext _course;
+        private readonly dbContext _course;
         private readonly ICourseService _courseService;
-        public CourseController(ICourseService courseService, courseContext course)
+        public CourseController(ICourseService courseService, dbContext course)
         {
             _courseService = courseService;
             _course = course;
@@ -41,12 +41,13 @@ namespace Course_service.Controllers
                              course.Id,
                              counte = _course.Enrollments.Where(e => e.CouresId == course.Id).Count()
                          };
-            return Ok(query4);
+            return _courseService.test();
+          
         }
         [HttpGet]
         public ActionResult<IEnumerable<Course>> GetAllCourse()
         {
-           return _courseService.GetAll();
+            return Ok(_courseService.GetAll());
          
         }
 
@@ -54,49 +55,52 @@ namespace Course_service.Controllers
         [HttpGet("{id:int:min(1)}")]
         public ActionResult<Course> GetDetailCourse(int id)
         {
-            return _courseService.GetDetailCourse(id);
+            return Ok(_courseService.GetDetailCourse(id));
         }
 
         [HttpPost]
         public ActionResult<Course> CreateCourse([FromBody] Course course)
         {
-            return _courseService.CreateCourse(course);
+            return Ok(_courseService.CreateCourse(course));
         }
 
 
         [HttpDelete("{id:int:min(1)}")]
-        public ActionResult<Course> DeleteCourse(int id)
+        public ActionResult DeleteCourse(int id)
         {
-           return _courseService.DeleteCourse(id);
+            _courseService.DeleteCourse(id);
+            return Ok();
         }
         
         [HttpPut("{id:int:min(1)}")]
         public IActionResult UpdateCourse(int id, [FromBody] Course course)
         {
-            return _courseService.UpdateCourse(id, course);
+            return Ok(_courseService.UpdateCourse(id, course));
         }
 
         [HttpDelete("Range")]
         public ActionResult DeletaRange([FromBody] int[] ids)
         {
-            return _courseService.DeleteCourseRange(ids);
+             _courseService.DeleteCourseRange(ids);
+            return Ok();
         }
         [HttpPost("Range")]
         public ActionResult addRange([FromBody] Course[] courses)
         {
-            return _courseService.AddCourseRange(courses);
+            return _courseService.AddCourseRange(courses) == true ? Ok() : BadRequest() ;
         }
-        [HttpPatch("RangeOne")]
+      /*  [HttpPatch("RangeOne")]
         public ActionResult updateRangeOne([FromBody]UpDatePathOne upDatePathOne)
         {
            
             return _courseService.UpdateRangeOne(upDatePathOne.entityIds, upDatePathOne.columnValues);
-        }
+        }*/
 
         [HttpPatch("RangeAny")]
         public ActionResult updateRangeAny([FromBody]Course[] courses)
         {
-            return _courseService.UpdateRangeAny(courses);
+           
+            return Ok(_courseService.UpdateRangeAny(courses));
         }
     }
 }
