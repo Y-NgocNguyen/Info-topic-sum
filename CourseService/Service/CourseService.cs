@@ -4,9 +4,7 @@ using sharedservice.Repository;
 using sharedservice.UnitofWork;
 using Microsoft.Extensions.Logging;
 using System.Collections.Immutable;
-using System.Reflection;
-using System.Text;
-using MySqlConnector;
+using CourseService.Utils;
 
 namespace CourseService.Service
 {
@@ -151,45 +149,21 @@ namespace CourseService.Service
                 .Where(name => name.ToLower() != "id")
                 .ToArray();
 
-            StringBuilder sqlBuilder = new StringBuilder();
-            List<MySqlParameter> parameters = new List<MySqlParameter>();
 
-            sqlBuilder.AppendLine("UPDATE courses SET");
+            List<List<(int id, Dictionary<string, dynamic> data)>> dividedItems = items
+            .Select((x, i) => new { Index = i, Value = x })
+            .GroupBy(x => x.Index / 200)
+            .Select(x => x.Select(v => v.Value).ToList())
+            .ToList();
 
-            for (int k = 0; k < nameProperties.Length; k++)
+            foreach (var sublist in dividedItems)
             {
-                string propertyName = nameProperties[k];
-                string parameterName = $"@{propertyName}";
-
-                sqlBuilder.AppendLine($"{propertyName} = CASE");
-
-                for (int i = 0; i < items.Count; i++)
-                {
-                    var item = items[i];
-                    if (item.data.TryGetValue(propertyName, out dynamic value))
-                    {
-                        if (value != null)
-                        {
-                            string valueParameterName = $"{parameterName}_{item.id}_{i}";
-                            sqlBuilder.AppendLine($" WHEN id = {item.id} THEN {valueParameterName}");
-                            parameters.Add(new MySqlParameter(valueParameterName, value));
-                        }
-                    }
-                }
-
-                sqlBuilder.AppendLine($" ELSE {propertyName} END,");
-
+                var (sqlFinal, parameters) = Utils.Utils.GenerateSql(nameProperties, sublist);
+                _db.RunSqlRaw(sqlFinal, parameters);
             }
 
-            sqlBuilder.Length -= 3;
-
-            List<int> ids = items.Select(item => item.id).ToList();
-            string sqlFooter = $"WHERE courses.Id IN ({string.Join(", ", ids)});";
-
-            string sqlFinal = sqlBuilder.ToString() + " " + sqlFooter;
 
           
-            _db.RunSqlRaw(sqlFinal, parameters);
 
             return "Update Compelte";
         }
