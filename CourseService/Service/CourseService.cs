@@ -5,6 +5,8 @@ using sharedservice.UnitofWork;
 using Microsoft.Extensions.Logging;
 using System.Collections.Immutable;
 using System.Reflection;
+using System.Text;
+using MySqlConnector;
 
 namespace CourseService.Service
 {
@@ -135,73 +137,63 @@ namespace CourseService.Service
         public string UpdateRangeAny(Course[] courses)
         {
 
-            List<(int id, Dictionary<string, dynamic> data)> items = new List<(int id, Dictionary<string, dynamic> data)>();
-
-            for (int i = 0; i < courses.Count(); i++)
+            List<(int id, Dictionary<string, dynamic> data)> items = courses.Select(e =>
             {
-                Course e = courses[i];
+                Dictionary<string, dynamic> data = typeof(Course).GetProperties()
+                    .Where(p => p.Name.ToLower() != "id")
+                    .ToDictionary(p => p.Name, p => p.GetValue(e));
 
-                Dictionary<string, dynamic> data = new Dictionary<string, dynamic>();
+                return (e.Id, data);
+            }).ToList();
 
-                foreach (var property in typeof(Course).GetProperties())
-                {
-                    data[property.Name] = property.GetValue(e);
-                }
+            string[] nameProperties = typeof(Course).GetProperties()
+                .Select(p => p.Name)
+                .Where(name => name.ToLower() != "id")
+                .ToArray();
 
-                items.Add((e.Id, data));
-            }
+            StringBuilder sqlBuilder = new StringBuilder();
+            List<MySqlParameter> parameters = new List<MySqlParameter>();
 
-           
-           
+            sqlBuilder.AppendLine("UPDATE courses SET");
 
-            string[] nameProperties = typeof(Course).GetProperties().Select(e=> e.Name).ToArray();
-
-            string sqlFinnal = "";
-
-            string sqlHeader = "UPDATE courses SET ";
-            string sqlbody = "";
-            string sqlfooter = " WHERE courses.Id IN ( ";
-
-            for (int k = 0; k < nameProperties.Count();k++)
+            for (int k = 0; k < nameProperties.Length; k++)
             {
-                if (nameProperties[k].ToLower() == "id") continue;
+                string propertyName = nameProperties[k];
+                string parameterName = $"@{propertyName}";
 
-                sqlbody += nameProperties[k] + " = ";
+                sqlBuilder.AppendLine($"{propertyName} = CASE");
 
-                string sql = "CASE ";
                 for (int i = 0; i < items.Count; i++)
                 {
-
                     var item = items[i];
-
-                    if (item.data.TryGetValue(nameProperties[k], out dynamic value))
+                    if (item.data.TryGetValue(propertyName, out dynamic value))
                     {
-                        if(value != null)
-                            sql += $"WHEN id = {item.id} THEN '{value}'  ";
+                        if (value != null)
+                        {
+                            string valueParameterName = $"{parameterName}_{item.id}_{i}";
+                            sqlBuilder.AppendLine($" WHEN id = {item.id} THEN {valueParameterName}");
+                            parameters.Add(new MySqlParameter(valueParameterName, value));
+                        }
                     }
-                    if (i == items.Count - 1)
-                    {
-                        sql += $"ELSE {nameProperties[k]} ";
-                    }
-
                 }
-                sql += "END,";
-                sqlbody += sql;
+
+                sqlBuilder.AppendLine($" ELSE {propertyName} END,");
+
             }
 
-            sqlbody = sqlbody.Substring(0, sqlbody.Length - 1);
+            sqlBuilder.Length -= 3;
 
-            for (int i = 0; i < items.Count; i++)
-            {
-                var item = items[i];
-                sqlfooter += $" {item.id} ,";
-            }
-            sqlfooter = sqlfooter.Substring(0, sqlfooter.Length - 1);
-            sqlfooter += " );";
-            sqlFinnal = sqlHeader + sqlbody + sqlfooter;
-            return _db.RunSqlRaw(sqlFinnal).ToString();
-           
+            List<int> ids = items.Select(item => item.id).ToList();
+            string sqlFooter = $"WHERE courses.Id IN ({string.Join(", ", ids)});";
+
+            string sqlFinal = sqlBuilder.ToString() + " " + sqlFooter;
+
+          
+            _db.RunSqlRaw(sqlFinal, parameters);
+
+            return "Update Compelte";
         }
+       
      
       /*  public bool UpdateRangeAny(Course[] courses)
         {
@@ -240,6 +232,5 @@ namespace CourseService.Service
             return true;
         }
 
-       
     }
 }

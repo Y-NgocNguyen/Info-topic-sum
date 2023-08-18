@@ -1,6 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using MySqlConnector;
 using Newtonsoft.Json.Linq;
+using Pomelo.EntityFrameworkCore.MySql.Query.Internal;
 using System.Linq.Expressions;
 using System.Reflection;
 
@@ -108,9 +109,9 @@ namespace sharedservice.Repository
             return _dbContext.Database.ExecuteSqlRaw(sql, parameters);
         }
 
-        public int RunSqlRaw(string sql)
+        public int RunSqlRaw(string sql,List<MySqlParameter> parameters)
         {
-            return _dbContext.Database.ExecuteSqlRaw(sql);
+            return _dbContext.Database.ExecuteSqlRaw(sql, parameters.ToArray());
         }
 
         /*public DbContext testContext()

@@ -1,4 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using MySqlConnector;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -20,7 +21,7 @@ namespace sharedservice.Repository
  
         void UpdateRangeOne(List<T> targetData, Dictionary<string, object> columnValues);
         void UpdateRangeAny(IEnumerable<T> entities);
-        public int RunSqlRaw(string sql);
+         int RunSqlRaw(string sql, List<MySqlConnector.MySqlParameter> parameters);
         int UpdateSQLRaw(T item);
     }
 }
