@@ -150,20 +150,24 @@ namespace CourseService.Service
                 .ToArray();
 
 
-            List<List<(int id, Dictionary<string, dynamic> data)>> dividedItems = items
-            .Select((x, i) => new { Index = i, Value = x })
-            .GroupBy(x => x.Index / 200)
-            .Select(x => x.Select(v => v.Value).ToList())
-            .ToList();
+            int batchSize = 200;
+            int totalItems = items.Count;
+            int totalBatches = (totalItems + batchSize - 1) / batchSize;
 
-            foreach (var sublist in dividedItems)
+            for (int batchIndex = 0; batchIndex < totalBatches; batchIndex++)
             {
+                int startIndex = batchIndex * batchSize;
+                int endIndex = Math.Min(startIndex + batchSize, totalItems);
+                var sublist = items.GetRange(startIndex, endIndex - startIndex);
+
                 var (sqlFinal, parameters) = Utils.Utils.GenerateSql(nameProperties, sublist);
                 _db.RunSqlRaw(sqlFinal, parameters);
             }
 
+            return "Update Complete";
 
-          
+
+
 
             return "Update Compelte";
         }
