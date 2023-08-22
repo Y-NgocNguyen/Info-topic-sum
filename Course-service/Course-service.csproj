@@ -19,6 +19,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\CloudService\CloudService.csproj" />
     <ProjectReference Include="..\CourseService\CourseService.csproj" />
     <ProjectReference Include="..\EnrollmentService\EnrollmentService.csproj" />
     <ProjectReference Include="..\sharedservice\sharedservice.csproj" />

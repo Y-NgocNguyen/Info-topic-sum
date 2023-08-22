@@ -1,4 +1,5 @@
-﻿using CourseService.Interface;
+﻿using Course_service.Filter;
+using CourseService.Interface;
 using Microsoft.AspNetCore.Mvc;
 using sharedservice.Models;
 
@@ -71,7 +72,7 @@ namespace Course_service.Controllers
             _courseService.DeleteCourse(id);
             return Ok();
         }
-        
+      
         [HttpPut("{id:int:min(1)}")]
         public IActionResult UpdateCourse(int id, [FromBody] Course course)
         {

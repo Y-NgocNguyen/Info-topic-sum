@@ -13,6 +13,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "JWTAuthentication", "JWTAut
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "sharedservice", "sharedservice\sharedservice.csproj", "{9E96713A-E002-437B-BB0A-9DDE0407DB61}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CloudService", "CloudService\CloudService.csproj", "{64FFFA9A-E0B9-4C2D-B09E-16A710E61149}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -39,8 +41,15 @@ Global
 		{9E96713A-E002-437B-BB0A-9DDE0407DB61}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{9E96713A-E002-437B-BB0A-9DDE0407DB61}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{9E96713A-E002-437B-BB0A-9DDE0407DB61}.Release|Any CPU.Build.0 = Release|Any CPU
+		{64FFFA9A-E0B9-4C2D-B09E-16A710E61149}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{64FFFA9A-E0B9-4C2D-B09E-16A710E61149}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{64FFFA9A-E0B9-4C2D-B09E-16A710E61149}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{64FFFA9A-E0B9-4C2D-B09E-16A710E61149}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {D706DAAF-D6AA-4B0A-8A24-B21F5FC0048E}
 	EndGlobalSection
 EndGlobal

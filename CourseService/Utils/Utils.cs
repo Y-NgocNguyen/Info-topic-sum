@@ -12,27 +12,24 @@ namespace CourseService.Utils
 
             sqlBuilder.AppendLine("UPDATE courses SET");
 
-            for (int k = 0; k < nameProperties.Length; k++)
+            foreach (string propertyName in nameProperties)
             {
-                string propertyName = nameProperties[k];
                 string parameterName = $"@{propertyName}";
 
                 sqlBuilder.AppendLine($"{propertyName} = CASE");
 
-                for (int i = 0; i < items.Count; i++)
+                foreach (var item in  items)
                 {
-                    var item = items[i];
                     if (item.data.TryGetValue(propertyName, out dynamic value))
                     {
                         if (value != null)
                         {
-                            string valueParameterName = $"{parameterName}_{item.id}_{i}";
+                            string valueParameterName = $"{parameterName}_{item.id}";
                             sqlBuilder.AppendLine($" WHEN id = {item.id} THEN {valueParameterName}");
                             parameters.Add(new MySqlParameter(valueParameterName, value));
                         }
                     }
                 }
-
                 sqlBuilder.AppendLine($" ELSE {propertyName} END,");
 
             }

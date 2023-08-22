@@ -9,6 +9,8 @@ using CourseService.Interface;
 using CourseService.Service;
 using EnrollmentService.Interface;
 using EnrollmentService.Service;
+using CloudService.Service;
+using CloudService.Interface;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -24,7 +26,7 @@ builder.Services.AddDbContext<dbContext>(o => o.UseMySql(builder.Configuration.G
 builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 builder.Services.AddScoped<ICourseService, CourseServiceB>();
 builder.Services.AddScoped<IEnrollment, EnrollmentS>();
-
+builder.Services.AddScoped<ICloud, CloudS>();
 
 builder.Services.AddAuthentication(options =>
 {

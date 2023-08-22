@@ -18,8 +18,7 @@ namespace sharedservice.Models
 
         public virtual DbSet<Course> Courses { get; set; } = null!;
         public virtual DbSet<Enrollment> Enrollments { get; set; } = null!;
-
-       
+        public virtual DbSet<MyFile> Files { get; set; } 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             modelBuilder.UseCollation("utf8mb4_unicode_ci")

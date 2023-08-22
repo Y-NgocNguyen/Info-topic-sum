@@ -166,10 +166,6 @@ namespace CourseService.Service
 
             return "Update Complete";
 
-
-
-
-            return "Update Compelte";
         }
        
      
@@ -193,6 +189,8 @@ namespace CourseService.Service
             }
 
         }*/
+
+        
         public dynamic test()
         {
             var listCourstId =  _db2.GetAll().Select(c => c.CouresId);
@@ -200,8 +198,6 @@ namespace CourseService.Service
             var jointb = from c in _db.GetAll()
                          where listCourstId.Contains(c.Id)
                          select c;
-                        
-            
             return jointb;
         }
 
@@ -209,6 +205,7 @@ namespace CourseService.Service
         {
             return true;
         }
+       
 
     }
 }
