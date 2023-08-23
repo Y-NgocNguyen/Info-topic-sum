@@ -22,7 +22,7 @@ namespace Course_service.Controllers
         [HttpPost]
         public async Task<ActionResult> AddEnrollment([FromBody] Request request )
         {
-            await _db.AddEnrollment(request);
+            await _db.AddEnrollment(request,DateTime.Now);
             return Ok();
         }
 

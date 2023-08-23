@@ -8,7 +8,7 @@ namespace EnrollmentService.Interface
     public interface IEnrollment
     {
         IEnumerable<Enrollment> GetAllErollments();
-        Task<Enrollment> AddEnrollment(Request request);
-        Task removeEnrollment(Request request);
+        Task<Enrollment> AddEnrollment(Request request, DateTime dateTime);
+        Task<bool> removeEnrollment(Request request);
     }
 }

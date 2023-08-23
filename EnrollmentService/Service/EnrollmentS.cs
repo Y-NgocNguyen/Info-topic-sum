@@ -3,7 +3,9 @@ using EnrollmentService.Unit;
 using sharedservice.Models;
 using sharedservice.Repository;
 using sharedservice.UnitofWork;
+using System.Net;
 using System.Net.Http.Json;
+using System.Security;
 using System.Text;
 
 namespace EnrollmentService.Service
@@ -25,7 +27,7 @@ namespace EnrollmentService.Service
         /// </summary>
         /// <param name="request">The enrollment request containing the course and user IDs.</param>
         /// <returns>An ActionResult </returns>
-        public async Task<Enrollment> AddEnrollment(Request request)
+        public async Task<Enrollment> AddEnrollment(Request request,DateTime dateTime)
         {
             // check User exit
             HttpClient httpClient = new HttpClient();
@@ -33,13 +35,31 @@ namespace EnrollmentService.Service
 
             if (!response.IsSuccessStatusCode)
             {
-                throw new Exception("not found");
+                return null;
+               /* return new HttpResponseMessage(HttpStatusCode.NotFound)
+                {
+                    ReasonPhrase = "User not found"
+                };*/
+
             }
 
             // check unique
-            if(_dbEn.Find(e => e.CouresId == request.cId && e.UserId == request.uId).FirstOrDefault() != null)
+            var temp = _dbEn.Find(e => e.CouresId == request.cId && e.UserId == request.uId).FirstOrDefault();
+            if (temp != null)
             {
-                throw new Exception("Unique");
+                var content2 = new StringContent(request.cId.ToString(), Encoding.UTF8, "application/json");
+
+                string url2 = $"https://localhost:7286/api/Authenticate/UserBalance/{request.uId}?d=t";
+
+                var response3 = await httpClient.PatchAsync(url2, content2);
+                if (!response3.IsSuccessStatusCode)
+                {
+                    return null;
+                }
+
+                temp.EnrolledDate = DateTime.Now;
+                _unitOfWork.SaveChanges();
+                return temp;
             }
 
             //check course exit
@@ -48,12 +68,22 @@ namespace EnrollmentService.Service
 
             if(course == null)
             {
-                throw new Exception("exting courst");
+                return null;
+               /* return new HttpResponseMessage(HttpStatusCode.NotFound)
+                {
+                    ReasonPhrase = "exting courst"
+                };*/
+                
             }
             //check user's money
             if (responseContent.balanceAccount < course.Price)
             {
-                throw new Exception("user not money");
+                return null;
+               /* return new HttpResponseMessage(HttpStatusCode.NotFound)
+                {
+                    ReasonPhrase = "user not money"
+                };*/
+             
             }
 
             //call Api sub money
@@ -64,15 +94,15 @@ namespace EnrollmentService.Service
             var response2 = await httpClient.PatchAsync(url, content);
             if (!response2.IsSuccessStatusCode)
             {
-                throw new Exception(response2.RequestMessage.ToString());
+                return null;
             }
 
             Enrollment enrollment = new Enrollment()
             {
-                EnrolledDate = DateTime.Now,
+                EnrolledDate = dateTime,
                 CouresId = request.cId,
                 UserId = request.uId
-              
+             
             };
            
             _dbEn.Add(enrollment);
@@ -89,7 +119,7 @@ namespace EnrollmentService.Service
         /// </summary>
         /// <param name="request">The enrollment request containing the course and user IDs.</param>
         /// <returns>An ActionResult </returns>
-        public async Task removeEnrollment(Request request)
+        public async Task<bool> removeEnrollment(Request request)
         {
             HttpClient httpClient = new HttpClient();
 
@@ -97,7 +127,8 @@ namespace EnrollmentService.Service
             Enrollment enrollment = _dbEn.Find(e => e.UserId == request.uId && e.CouresId == request.cId).FirstOrDefault();
             if (enrollment == null)
             {
-                throw new Exception("Exing Enrollment");
+                
+                return false;
             }
             // call api add money
             var content = new StringContent(request.cId.ToString(), Encoding.UTF8, "application/json");
@@ -107,13 +138,13 @@ namespace EnrollmentService.Service
 
             if (!response2.IsSuccessStatusCode)
             {
-               throw new Exception(response2.RequestMessage.ToString());
+                return false;
             }
 
             _dbEn.Remove(enrollment);
             
             _unitOfWork.SaveChanges();
-
+            return true;
            
         }
     }

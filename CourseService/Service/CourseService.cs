@@ -205,7 +205,13 @@ namespace CourseService.Service
         {
             return true;
         }
-       
+
+        public Course getCourstByCode(string code)
+        {
+
+          return _db.Find(c => c.Code == code)?.FirstOrDefault();
+        }
+
 
     }
 }

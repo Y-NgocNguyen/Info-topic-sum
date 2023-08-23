@@ -1,5 +1,4 @@
-﻿
-using sharedservice.Models;
+﻿using sharedservice.Models;
 
 
 namespace CourseService.Interface
@@ -12,10 +11,12 @@ namespace CourseService.Interface
         void DeleteCourseRange(int[] ids);
         IEnumerable<Course> GetAll();
         dynamic GetDetailCourse(int id);
+       Course getCourstByCode(string code);
         Course? UpdateCourse(int id, Course course);
 
         bool UpdateRange(Course[] course);
         string UpdateRangeAny(Course[] courses);
+
         dynamic test();
     }
 }
