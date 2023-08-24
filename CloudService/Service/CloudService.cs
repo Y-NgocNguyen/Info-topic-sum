@@ -1,6 +1,8 @@
 ﻿using CloudService.Interface;
 using CloudService.model;
 using CourseService.Interface;
+using CsvHelper;
+using CsvHelper.Configuration;
 using EnrollmentService.Interface;
 using EnrollmentService.Unit;
 using Google.Apis.Auth.OAuth2;
@@ -12,6 +14,7 @@ using sharedservice.Models;
 using sharedservice.Repository;
 using sharedservice.UnitofWork;
 using System.Globalization;
+using CsvHelper.Configuration;
 
 namespace CloudService.Service
 {
@@ -27,8 +30,9 @@ namespace CloudService.Service
         private readonly IEnrollment _enrollmentService;
         private readonly ICourseService _courseService;
 
-
-
+        private readonly string newFolder;
+        private readonly string failedFolder;
+        private readonly string compelteFolder;
         public CloudS(IUnitOfWork unitOfWork, IConfiguration configuration, ICourseService courseService, IEnrollment enrollment)
         {
             _unitOfWork = unitOfWork;
@@ -41,6 +45,9 @@ namespace CloudService.Service
             _enrollmentService = enrollment;
             _courseService = courseService;
 
+            newFolder = configuration["GCS:folderStorage:newFolder"];
+            failedFolder = configuration["GCS:folderStorage:failedFolder"];
+            compelteFolder = configuration["GCS:folderStorage:compelteFolder"];
 
         }
         /// <summary>
@@ -124,12 +131,20 @@ namespace CloudService.Service
         /// <returns></returns>
         public async Task<string> DownLoadFileFromGCS(string nameFile)
         {
-            string localFilePath = $"D:\\code\\c#\\Info-topic\\CloudService\\Datadownload\\{nameFile}";
+            string downloadDirectory = Path.Combine(Directory.GetCurrentDirectory(), "Datadownload");
+            string localFilePath = Path.Combine(downloadDirectory, nameFile);
+            string fileNameForStorage = $"{newFolder}{nameFile}";
 
-            var fileNameForStorage = $"Y/course/new/{nameFile}";
-            var fileStream = File.Create(localFilePath);
-            await storageClient.DownloadObjectAsync(bucketName, fileNameForStorage, fileStream);
-            fileStream.Close();
+            if (!Directory.Exists(downloadDirectory))
+            {
+                Directory.CreateDirectory(downloadDirectory);
+            }
+
+            using (var fileStream = File.Create(localFilePath))
+            {
+                await storageClient.DownloadObjectAsync(bucketName, fileNameForStorage, fileStream);
+            }
+
             return localFilePath;
         }
         
@@ -188,7 +203,7 @@ namespace CloudService.Service
             File.Delete(localFilePath);
 
 
-            /* await movieFileInGCS($"Y/course/new/{fileName}", $"Y/course/failed/{fileName}");*/
+         
 
             return "";
 
@@ -250,7 +265,7 @@ namespace CloudService.Service
                 {
                     return true;
                 }
-                if (storageObject.Name == $"Y/course/new/{fileName}" && filetocheck == false)
+                if (storageObject.Name == $"{newFolder}{fileName}" && filetocheck == false)
                 {
                     filetocheck = true;
                     continue;
@@ -261,7 +276,21 @@ namespace CloudService.Service
             return false;
         }
 
-        public async Task<dynamic> ImportCsvToDataBase(string localFilePath,string fileName,string code)
+        public bool IsHeaderValid(string[] record)
+        {
+            string[] expectedFields = { "CourseCode", "UserId", "IsEnroll", "EnrollDate" };
+
+            return expectedFields.SequenceEqual(record);
+        }
+
+        public bool IsRecordValid(CsvRecord record, string code)
+        {
+            return record.CourseCode == code;
+        }
+
+
+
+        public async Task<dynamic> ImportCsvToDataBase(string localFilePath, string fileName, string code)
         {
             using (var reader = new StreamReader(localFilePath))
             {
@@ -271,8 +300,6 @@ namespace CloudService.Service
 
                 while (reader.Peek() >= 0)
                 {
-                   
-
                     var line = reader.ReadLine();
                     var values = line.Split(';');
                     //check header file
@@ -280,17 +307,16 @@ namespace CloudService.Service
                     {
                         isFirstLine = false;
 
-
                         if (values[0] != "CourseCode" || values[1] != "UserId" || values[2] != "IsEnroll" || values[3] != "EnrollDate")
                         {
                             //if header file invalid then move file to folder failed
-                            await movieFileInGCS($"Y/course/new/{fileName}", $"Y/course/failed/{fileName}");
+                            await movieFileInGCS($"{newFolder}{fileName}", $"{failedFolder}{fileName}");
                             return null;
                         }
 
                         continue; // Skip the header row
                     }
-                    
+
                     if (values.Length != 4)
                     {
                         continue;
@@ -299,7 +325,7 @@ namespace CloudService.Service
                     if (values[0] != code)
                     {
                         continue;
-                    }   
+                    }
 
                     //check user exist in user service
 
@@ -345,11 +371,80 @@ namespace CloudService.Service
 
                 }
                 //if compelted => move file to folder completed
-                await movieFileInGCS($"Y/course/new/{fileName}", $"Y/course/completed/{fileName}");
+                await movieFileInGCS($"{newFolder}{fileName}", $"{compelteFolder}{fileName}");
                 return list;
             }
         }
+        public async Task<dynamic> ImportCsvToDataBaseUseCsvHelper(string localFilePath, string fileName, string code)
+        {
+            List<string> list = new List<string>();
+            HttpClient httpClient = new HttpClient();
 
+            using (var reader = new StreamReader(localFilePath))
+            using (var csv = new CsvReader(reader, new CsvConfiguration(CultureInfo.InvariantCulture) { HasHeaderRecord = true, Delimiter = ";" }))
+            {
+                csv.Context.RegisterClassMap<CsvRecordMap>();
+                await csv.ReadAsync();
+
+
+                if (csv.Configuration.Delimiter != ";" || !csv.ReadHeader() || !IsHeaderValid(csv.HeaderRecord))
+                {
+                    await movieFileInGCS($"{newFolder}{fileName}", $"{failedFolder}{fileName}");
+                    return null;
+                }
+                
+                while (await csv.ReadAsync())
+                {
+                    var record = csv.GetRecord<CsvRecord>();
+                   
+                    if (record.GetType().GetProperties().Length != 4)
+                    {
+                        await movieFileInGCS($"{newFolder}{fileName}", $"{failedFolder}{fileName}");
+                        return null;
+                    }
+                    if (!IsRecordValid(record, code))
+                    {
+                        continue;
+                    }
+
+
+                    var response = await httpClient.GetAsync($"https://localhost:7286/api/Authenticate/checkUser/{record.UserId}");
+
+                    if (!response.IsSuccessStatusCode)
+                    {
+                        continue;
+                    }
+                    string userId = record.UserId;
+
+                    if (list.Contains(userId))
+                    {
+                        continue;
+                    }
+
+                    list.Add(userId);
+
+                    if (record.IsEnroll.HasValue && !string.IsNullOrEmpty(record.IsEnroll.ToString()))
+                    {
+                        int courseId = _courseService.getCourstByCode(code).Id;
+                        Request request = new Request() { uId = userId, cId = courseId };
+
+                        if (!record.IsEnroll.Value)
+                        {
+                            await _enrollmentService.removeEnrollment(request);
+                        }
+                        else
+                        {
+                            DateTime enrollDate = record.EnrollDate ?? DateTime.Now;
+
+                            await _enrollmentService.AddEnrollment(request, enrollDate);
+                        }
+                    }
+                }
+            }
+
+            await movieFileInGCS($"{newFolder}{fileName}", $"{compelteFolder}{fileName}");
+            return list;
+        }
 
 
 
