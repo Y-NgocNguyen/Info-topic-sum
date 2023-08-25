@@ -76,7 +76,7 @@ namespace CourseService.Service
         /// Retrieves all courses from the database.
         /// </summary>
         /// <returns>An ActionResult containing a collection of courses.</returns>
-        public IEnumerable<Course> GetAll()
+        public IQueryable<Course> GetAll()
         {
             return _db.GetAll();
         }

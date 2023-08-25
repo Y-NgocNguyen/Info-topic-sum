@@ -24,7 +24,11 @@ namespace CloudService.model
             Map(m => m.UserId).Name("UserId");
             Map(m => m.IsEnroll).Name("IsEnroll");
             Map(m => m.EnrollDate).Name("EnrollDate");
+
         }
+
+       
+
     }
 
 }

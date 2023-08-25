@@ -9,7 +9,7 @@ namespace CourseService.Interface
         bool AddCourseRange(Course[] courses);
         void DeleteCourse(int id);
         void DeleteCourseRange(int[] ids);
-        IEnumerable<Course> GetAll();
+        IQueryable<Course> GetAll();
         dynamic GetDetailCourse(int id);
        Course getCourstByCode(string code);
         Course? UpdateCourse(int id, Course course);

@@ -46,5 +46,10 @@ namespace Course_service.Controllers
            
             return await _cloudService.DeleteFile(fileNameForStorage) ? Ok() : NotFound();
         }
+        [HttpGet("ExportFile")]
+        public async Task<IActionResult> ExportFile()
+        {
+            return Ok( await _cloudService.ExportEnRollMentToCSV());
+        }
     }
 }

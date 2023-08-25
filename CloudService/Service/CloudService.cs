@@ -6,7 +6,6 @@ using CsvHelper.Configuration;
 using EnrollmentService.Interface;
 using EnrollmentService.Unit;
 using Google.Apis.Auth.OAuth2;
-using Google.Apis.Storage.v1.Data;
 using Google.Cloud.Storage.V1;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
@@ -14,7 +13,7 @@ using sharedservice.Models;
 using sharedservice.Repository;
 using sharedservice.UnitofWork;
 using System.Globalization;
-using CsvHelper.Configuration;
+using ClosedXML.Excel;
 
 namespace CloudService.Service
 {
@@ -33,6 +32,8 @@ namespace CloudService.Service
         private readonly string newFolder;
         private readonly string failedFolder;
         private readonly string compelteFolder;
+        private readonly string exportFolderCSV;
+        private readonly string exportFolderEx;
         public CloudS(IUnitOfWork unitOfWork, IConfiguration configuration, ICourseService courseService, IEnrollment enrollment)
         {
             _unitOfWork = unitOfWork;
@@ -48,6 +49,8 @@ namespace CloudService.Service
             newFolder = configuration["GCS:folderStorage:newFolder"];
             failedFolder = configuration["GCS:folderStorage:failedFolder"];
             compelteFolder = configuration["GCS:folderStorage:compelteFolder"];
+            exportFolderCSV = "course/export/csv/";
+            exportFolderEx = "course/export/excel/";
 
         }
         /// <summary>
@@ -178,7 +181,7 @@ namespace CloudService.Service
             //check file fomat RegisterCourse_<Course_code>_yyyy_mm_dd.csv
            
             
-            string code = IsValidFileName(fileName);
+            string? code = IsValidFileName(fileName);
 
             if (code == null)
             {
@@ -195,15 +198,22 @@ namespace CloudService.Service
             //get file from gcs
              string localFilePath = await DownLoadFileFromGCS(fileName);
 
-            if (await ImportCsvToDataBase(localFilePath, fileName, code) == null)
+            try
             {
+                if (await ImportCsvToDataBaseUseCsvHelper(localFilePath, fileName, code) == null)
+                {
+                    return null;
+                }
+            }
+            catch (Exception)
+            {
+
+                File.Delete(localFilePath);
+                await movieFileInGCS($"{newFolder}{fileName}", $"{failedFolder}{fileName}");
                 return null;
+               
             }
 
-            File.Delete(localFilePath);
-
-
-         
 
             return "";
 
@@ -256,8 +266,8 @@ namespace CloudService.Service
         //creater function check file duplicate in GCS
         public async Task<bool> CheckDuplicate(string fileName)
         {
-            List<string> duplicate = new List<string>();
-            var listobject = storageClient.ListObjects(bucketName, "Y/course/");
+            var duplicate = new List<string>();
+            var listobject = storageClient.ListObjects(bucketName, "Y/Course/");
             bool filetocheck = false;
             foreach (var storageObject in listobject)
             {
@@ -265,7 +275,7 @@ namespace CloudService.Service
                 {
                     return true;
                 }
-                if (storageObject.Name == $"{newFolder}{fileName}" && filetocheck == false)
+                if (storageObject.Name == $"Viet/Course/new/{fileName}" && filetocheck == false)
                 {
                     filetocheck = true;
                     continue;
@@ -275,7 +285,6 @@ namespace CloudService.Service
             }
             return false;
         }
-
         public bool IsHeaderValid(string[] record)
         {
             string[] expectedFields = { "CourseCode", "UserId", "IsEnroll", "EnrollDate" };
@@ -292,10 +301,12 @@ namespace CloudService.Service
 
         public async Task<dynamic> ImportCsvToDataBase(string localFilePath, string fileName, string code)
         {
+            
+
             using (var reader = new StreamReader(localFilePath))
             {
-                List<string> list = new List<string>();
-                HttpClient httpClient = new HttpClient();
+                var list = new List<string>();
+                var httpClient = new HttpClient();
                 bool isFirstLine = true;
 
                 while (reader.Peek() >= 0)
@@ -356,7 +367,7 @@ namespace CloudService.Service
                     }
 
                     int idCourst = _courseService.getCourstByCode(code).Id;
-                    Request request = new Request() { uId = values[1], cId = idCourst };
+                    var request = new Request() { uId = values[1], cId = idCourst };
                     if (values[2] == "false")
                     {
                         //call function delete Enrollment in Enrollment Service
@@ -377,8 +388,8 @@ namespace CloudService.Service
         }
         public async Task<dynamic> ImportCsvToDataBaseUseCsvHelper(string localFilePath, string fileName, string code)
         {
-            List<string> list = new List<string>();
-            HttpClient httpClient = new HttpClient();
+            var list = new List<string>();
+            var httpClient = new HttpClient();
 
             using (var reader = new StreamReader(localFilePath))
             using (var csv = new CsvReader(reader, new CsvConfiguration(CultureInfo.InvariantCulture) { HasHeaderRecord = true, Delimiter = ";" }))
@@ -426,7 +437,7 @@ namespace CloudService.Service
                     if (record.IsEnroll.HasValue && !string.IsNullOrEmpty(record.IsEnroll.ToString()))
                     {
                         int courseId = _courseService.getCourstByCode(code).Id;
-                        Request request = new Request() { uId = userId, cId = courseId };
+                        var request = new Request() { uId = userId, cId = courseId };
 
                         if (!record.IsEnroll.Value)
                         {
@@ -444,6 +455,89 @@ namespace CloudService.Service
 
             await movieFileInGCS($"{newFolder}{fileName}", $"{compelteFolder}{fileName}");
             return list;
+        }
+
+        //export csv and excel
+        public  async Task<dynamic> ExportEnRollMentToCSV()
+        {
+              
+            IQueryable<Enrollment> listEnroll =  _enrollmentService.GetAllErollments();
+            IQueryable<Course> listCourse =  _courseService.GetAll();
+
+           
+            var list = from enroll in listEnroll
+                       join course in listCourse on enroll.CouresId equals course.Id 
+                       where enroll.EnrolledDate.AddMonths(3) >= DateTime.Now
+                       select new
+                       {
+                           CourseCode = course.Code,
+                           UserId = enroll.UserId??"",
+                           IsEnroll = true,
+                           EnrollDate = enroll.EnrolledDate,
+                       };
+
+            DateTime date = DateTime.Now;
+            string nameCSV = $"Export_Backup_Course_{date.Year}_{date.Month}_{date.Day}.csv";
+            string nameExcel = $"Export_Backup_Course_{date.Year}_{date.Month}_{date.Day}.xlsx";
+
+
+            Task exportCsvTask = ExportCSV(list, nameCSV);
+            Task exportExcelTask = ExportExcel(list, nameExcel);
+            await Task.WhenAll(exportCsvTask, exportExcelTask);
+            return list;
+           
+        }
+        //export csv
+        public async Task  ExportCSV(dynamic list, string nameCSV)
+        {
+           
+
+            using (var memoryStream = new MemoryStream())
+            using (var writer = new StreamWriter(nameCSV))
+            using (var csv = new CsvWriter(writer, CultureInfo.InvariantCulture))
+            {
+                csv.WriteRecords(list);
+                writer.Flush();
+                memoryStream.Position = 0;
+
+                var file = new FormFile(memoryStream, 0, memoryStream.Length, "file", nameCSV);
+
+                await UploadFileAsync(file, $"{exportFolderCSV}{nameCSV}");
+
+            }
+            File.Delete(nameCSV);
+        }
+        //export excel
+        public async Task ExportExcel(dynamic list,string nameExcel)
+        {
+              using (var workbook = new XLWorkbook())
+            {
+                var worksheet = workbook.Worksheets.Add("Course");
+                //add filter
+                worksheet.Range("A1:D1").SetAutoFilter();
+                //add header name
+                worksheet.Cell("A1").Value = "CourseCode";
+                worksheet.Cell("B1").Value = "UserId";
+                worksheet.Cell("C1").Value = "IsEnroll";
+                worksheet.Cell("D1").Value = "EnrollDate";
+
+                //add data
+                int i = 2;
+                foreach (var item in list)
+                {
+                    worksheet.Cell($"A{i}").Value = item.CourseCode;
+                    worksheet.Cell($"B{i}").Value = item.UserId;
+                    worksheet.Cell($"C{i}").Value = item.IsEnroll;
+                    worksheet.Cell($"D{i}").Value = item.EnrollDate;
+                    i++;
+                }
+
+                
+                workbook.SaveAs(nameExcel);
+                var file = new FormFile(new MemoryStream(), 0, 0, "file", nameExcel);
+                await UploadFileAsync(file, $"{exportFolderEx}{nameExcel}");
+            }
+            File.Delete(nameExcel);
         }
 
 

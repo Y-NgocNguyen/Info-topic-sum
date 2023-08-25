@@ -30,7 +30,7 @@ namespace EnrollmentService.Service
         public async Task<Enrollment> AddEnrollment(Request request,DateTime dateTime)
         {
             // check User exit
-            HttpClient httpClient = new HttpClient();
+            var httpClient = new HttpClient();
             var response = await httpClient.GetAsync($"https://localhost:7286/api/Authenticate/checkUser/{request.uId}");
 
             if (!response.IsSuccessStatusCode)
@@ -64,7 +64,7 @@ namespace EnrollmentService.Service
 
             //check course exit
             var responseContent = await response.Content.ReadFromJsonAsync<User>();
-            Course course = _dbCou.Find(e=>e.Id == request.cId).FirstOrDefault();
+            Course? course = _dbCou.Find(e=>e.Id == request.cId).FirstOrDefault();
 
             if(course == null)
             {
@@ -97,7 +97,7 @@ namespace EnrollmentService.Service
                 return null;
             }
 
-            Enrollment enrollment = new Enrollment()
+            var enrollment = new Enrollment()
             {
                 EnrolledDate = dateTime,
                 CouresId = request.cId,
@@ -110,7 +110,7 @@ namespace EnrollmentService.Service
             return enrollment;
         }
 
-        public IEnumerable<Enrollment> GetAllErollments()
+        public IQueryable<Enrollment> GetAllErollments()
         {
             return _dbEn.GetAll();
         }
@@ -121,10 +121,10 @@ namespace EnrollmentService.Service
         /// <returns>An ActionResult </returns>
         public async Task<bool> removeEnrollment(Request request)
         {
-            HttpClient httpClient = new HttpClient();
+            var httpClient = new HttpClient();
 
             //check enrollment exit
-            Enrollment enrollment = _dbEn.Find(e => e.UserId == request.uId && e.CouresId == request.cId).FirstOrDefault();
+            Enrollment? enrollment = _dbEn.Find(e => e.UserId == request.uId && e.CouresId == request.cId).FirstOrDefault();
             if (enrollment == null)
             {
                 

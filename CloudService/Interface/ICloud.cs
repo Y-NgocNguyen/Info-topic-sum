@@ -13,5 +13,7 @@ namespace CloudService.Interface
         IEnumerable<MyFile> getAllFile();
       
         Task<dynamic> ImportFile(string urlFile);
+       
+        Task<dynamic> ExportEnRollMentToCSV();
     }
 }
