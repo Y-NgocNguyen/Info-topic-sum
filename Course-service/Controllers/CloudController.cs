@@ -24,16 +24,15 @@ namespace Course_service.Controllers
 
         [HttpPost]
         [CheckFileFilter]
-        //create IactionResult uload to GCS
-        public async Task<IActionResult> UploadtoGCS([FromForm]MyFile imageFile)
+        //create IactionResult upload to GCS
+        public async Task<IActionResult> UpLoadToGCS([FromForm]MyFile imageFile)
         {
+           MyFile resualtFile = await _cloudService.UploadFileToGCS(imageFile.Files);
+            return Ok(resualtFile);
 
-            return Ok(await _cloudService.UploadFileToGCS(imageFile.Files));
-
-            /*return Ok(await _cloudService.ImportCsvToDataBase(imageFile.Files));*/
         }
         [HttpGet("fileName")]
-        public async Task<IActionResult> InportFile(string fileName)
+        public async Task<IActionResult> ImportFile(string fileName)
         {
             return Ok(await _cloudService.ImportFile(fileName));
         }

@@ -14,6 +14,10 @@ using sharedservice.Repository;
 using sharedservice.UnitofWork;
 using System.Globalization;
 using ClosedXML.Excel;
+using System.Text;
+using Microsoft.Extensions.Options;
+using Microsoft.Extensions.Logging;
+using Google.Apis.Logging;
 
 namespace CloudService.Service
 {
@@ -29,28 +33,29 @@ namespace CloudService.Service
         private readonly IEnrollment _enrollmentService;
         private readonly ICourseService _courseService;
 
-        private readonly string newFolder;
-        private readonly string failedFolder;
-        private readonly string compelteFolder;
-        private readonly string exportFolderCSV;
-        private readonly string exportFolderEx;
-        public CloudS(IUnitOfWork unitOfWork, IConfiguration configuration, ICourseService courseService, IEnrollment enrollment)
+        private readonly FolderStorageOptions _folderStorageOptions;
+        private readonly GCSConfi _gCSConfi;
+
+        private readonly ILogger<CloudS> _logger;
+       
+        private List<string> headers;
+        public CloudS(IUnitOfWork unitOfWork, IOptions<GCSConfi> _gCSConfi, IOptions<FolderStorageOptions> options, ICourseService courseService, IEnrollment enrollment,ILogger<CloudS> logger)
         {
             _unitOfWork = unitOfWork;
             _genericFile = _unitOfWork.GetRepository<MyFile>();
 
             googleCredential = GoogleCredential.GetApplicationDefault();
             storageClient = StorageClient.Create(googleCredential);
-            bucketName = configuration["GoogleCloudStorageBucket"];
+            bucketName = _gCSConfi.Value.BucketName;
 
             _enrollmentService = enrollment;
             _courseService = courseService;
 
-            newFolder = configuration["GCS:folderStorage:newFolder"];
-            failedFolder = configuration["GCS:folderStorage:failedFolder"];
-            compelteFolder = configuration["GCS:folderStorage:compelteFolder"];
-            exportFolderCSV = "course/export/csv/";
-            exportFolderEx = "course/export/excel/";
+           
+            _folderStorageOptions = options.Value;
+            headers = new List<string> { "CourseCode", "UserId", "IsEnroll", "EnrollDate" };
+
+            _logger = logger;
 
         }
         /// <summary>
@@ -77,7 +82,7 @@ namespace CloudService.Service
         /// <summary>
         /// generate file name for storage
         /// </summary>
-        /// <param name="fileName">file name gennerate</param>
+        /// <param name="fileName">file name generate</param>
         /// <returns></returns>
         private static string FormFileName(string fileName)
         {
@@ -105,7 +110,7 @@ namespace CloudService.Service
 
         public IEnumerable<MyFile> getAllFile()
         {
-
+            _logger.LogInformation("Y dang in Log");
             return _genericFile.GetAll();
         }
         /// <summary>
@@ -136,7 +141,7 @@ namespace CloudService.Service
         {
             string downloadDirectory = Path.Combine(Directory.GetCurrentDirectory(), "Datadownload");
             string localFilePath = Path.Combine(downloadDirectory, nameFile);
-            string fileNameForStorage = $"{newFolder}{nameFile}";
+            string fileNameForStorage = $"{_folderStorageOptions.NewFolder}{nameFile}";
 
             if (!Directory.Exists(downloadDirectory))
             {
@@ -173,12 +178,12 @@ namespace CloudService.Service
         }
 
 
-        public async Task<dynamic> ImportFile(string urlFile)
+        public async Task<dynamic?> ImportFile(string urlFile)
         {
          
             string fileName = Path.GetFileName(urlFile);
 
-            //check file fomat RegisterCourse_<Course_code>_yyyy_mm_dd.csv
+            //check file format RegisterCourse_<Course_code>_yyyy_mm_dd.csv
            
             
             string? code = IsValidFileName(fileName);
@@ -209,7 +214,7 @@ namespace CloudService.Service
             {
 
                 File.Delete(localFilePath);
-                await movieFileInGCS($"{newFolder}{fileName}", $"{failedFolder}{fileName}");
+                await movieFileInGCS($"{_folderStorageOptions.NewFolder}{fileName}", $"{_folderStorageOptions.FailedFolder}{fileName}");
                 return null;
                
             }
@@ -219,7 +224,7 @@ namespace CloudService.Service
 
     
         }
-        //move file to orther folder 
+        //move file to other folder 
         public async Task movieFileInGCS(string source,string dest)
         {
             storageClient.CopyObject(bucketName, source, bucketName, dest);
@@ -263,7 +268,7 @@ namespace CloudService.Service
             return courseCode;
         }
 
-        //creater function check file duplicate in GCS
+        //create function check file duplicate in GCS
         public async Task<bool> CheckDuplicate(string fileName)
         {
             var duplicate = new List<string>();
@@ -321,7 +326,7 @@ namespace CloudService.Service
                         if (values[0] != "CourseCode" || values[1] != "UserId" || values[2] != "IsEnroll" || values[3] != "EnrollDate")
                         {
                             //if header file invalid then move file to folder failed
-                            await movieFileInGCS($"{newFolder}{fileName}", $"{failedFolder}{fileName}");
+                            await movieFileInGCS($"{_folderStorageOptions.NewFolder}{fileName}", $"{_folderStorageOptions.FailedFolder}{fileName}");
                             return null;
                         }
 
@@ -381,8 +386,9 @@ namespace CloudService.Service
                     }
 
                 }
-                //if compelted => move file to folder completed
-                await movieFileInGCS($"{newFolder}{fileName}", $"{compelteFolder}{fileName}");
+                //if completed => move file to folder completed
+                
+                await movieFileInGCS($"{_folderStorageOptions.NewFolder}{fileName}", $"{_folderStorageOptions.CompletedFolder}{fileName}");
                 return list;
             }
         }
@@ -400,7 +406,7 @@ namespace CloudService.Service
 
                 if (csv.Configuration.Delimiter != ";" || !csv.ReadHeader() || !IsHeaderValid(csv.HeaderRecord))
                 {
-                    await movieFileInGCS($"{newFolder}{fileName}", $"{failedFolder}{fileName}");
+                    await movieFileInGCS($"{_folderStorageOptions.NewFolder}{fileName}", $"{_folderStorageOptions.FailedFolder}{fileName}");
                     return null;
                 }
                 
@@ -410,7 +416,7 @@ namespace CloudService.Service
                    
                     if (record.GetType().GetProperties().Length != 4)
                     {
-                        await movieFileInGCS($"{newFolder}{fileName}", $"{failedFolder}{fileName}");
+                        await movieFileInGCS($"{_folderStorageOptions.NewFolder}{fileName}", $"{_folderStorageOptions.FailedFolder}{fileName}");
                         return null;
                     }
                     if (!IsRecordValid(record, code))
@@ -453,7 +459,7 @@ namespace CloudService.Service
                 }
             }
 
-            await movieFileInGCS($"{newFolder}{fileName}", $"{compelteFolder}{fileName}");
+            await movieFileInGCS($"{_folderStorageOptions.NewFolder}{fileName}", $"{_folderStorageOptions.CompletedFolder}{fileName}");
             return list;
         }
 
@@ -502,11 +508,33 @@ namespace CloudService.Service
 
                 var file = new FormFile(memoryStream, 0, memoryStream.Length, "file", nameCSV);
 
-                await UploadFileAsync(file, $"{exportFolderCSV}{nameCSV}");
+                await UploadFileAsync(file, $"{_folderStorageOptions.ExportFolderCSV}{nameCSV}");
 
             }
             File.Delete(nameCSV);
         }
+        //get column name from number column
+        string GetColumnName(int columnNumber)
+        {
+            StringBuilder columnName = new StringBuilder();
+            int dividend = columnNumber;
+
+            while (dividend > 0)
+            {
+                int modulo = (dividend - 1) % 26;
+                columnName.Insert(0, (char)('A' + modulo));
+                dividend = (dividend - modulo) / 26;
+            }
+
+            return columnName.ToString();
+        }
+        //get value by property name
+        private object GetValueByPropertyName(object obj, string propertyName)
+        {
+            var prop = obj.GetType().GetProperty(propertyName);
+            return prop?.GetValue(obj);
+        }
+
         //export excel
         public async Task ExportExcel(dynamic list,string nameExcel)
         {
@@ -514,28 +542,34 @@ namespace CloudService.Service
             {
                 var worksheet = workbook.Worksheets.Add("Course");
                 //add filter
-                worksheet.Range("A1:D1").SetAutoFilter();
-                //add header name
-                worksheet.Cell("A1").Value = "CourseCode";
-                worksheet.Cell("B1").Value = "UserId";
-                worksheet.Cell("C1").Value = "IsEnroll";
-                worksheet.Cell("D1").Value = "EnrollDate";
+                var range = worksheet.Range($"A1:{GetColumnName(headers.Count)}1");
+                range.SetAutoFilter();
 
-                //add data
-                int i = 2;
-                foreach (var item in list)
+                //add header name
+                for (int i = 0; i < headers.Count; i++)
                 {
-                    worksheet.Cell($"A{i}").Value = item.CourseCode;
-                    worksheet.Cell($"B{i}").Value = item.UserId;
-                    worksheet.Cell($"C{i}").Value = item.IsEnroll;
-                    worksheet.Cell($"D{i}").Value = item.EnrollDate;
-                    i++;
+                    var columnName = GetColumnName(i + 1);
+                    worksheet.Cell($"{columnName}1").Value = headers[i];
                 }
 
-                
+                //add data
+                int row = 2;
+                foreach (var item in list)
+                {
+                    for (int col = 0; col < headers.Count; col++)
+                    {
+                        var columnName = GetColumnName(col + 1);
+                        var value = GetValueByPropertyName(item, headers[col]);
+                        worksheet.Cell($"{columnName}{row}").Value = value;
+                    }
+                    row++;
+                }
+
+
+
                 workbook.SaveAs(nameExcel);
                 var file = new FormFile(new MemoryStream(), 0, 0, "file", nameExcel);
-                await UploadFileAsync(file, $"{exportFolderEx}{nameExcel}");
+                await UploadFileAsync(file, $"{_folderStorageOptions.ExportFolderCSV}{nameExcel}");
             }
             File.Delete(nameExcel);
         }

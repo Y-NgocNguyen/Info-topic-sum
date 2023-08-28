@@ -54,9 +54,9 @@ namespace CourseService.Service
         /// <returns>An ActionResult</returns>
         public void DeleteCourse(int id)
         {
-            var courses = _db.Find(u => u.Id == id).FirstOrDefault();
+            var course = _db.Find(u => u.Id == id).FirstOrDefault();
    
-            _db.Remove(courses);
+            _db.Remove(course);
 
             _unitOfWork.SaveChanges();
             

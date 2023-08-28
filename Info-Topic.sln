@@ -13,7 +13,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "JWTAuthentication", "JWTAut
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "sharedservice", "sharedservice\sharedservice.csproj", "{9E96713A-E002-437B-BB0A-9DDE0407DB61}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CloudService", "CloudService\CloudService.csproj", "{64FFFA9A-E0B9-4C2D-B09E-16A710E61149}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "CloudService", "CloudService\CloudService.csproj", "{64FFFA9A-E0B9-4C2D-B09E-16A710E61149}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
