@@ -1,4 +1,5 @@
-﻿using CloudService.Interface;
+﻿using ClosedXML.Excel;
+using CloudService.Interface;
 using CloudService.model;
 using CourseService.Interface;
 using CsvHelper;
@@ -8,38 +9,30 @@ using EnrollmentService.Unit;
 using Google.Apis.Auth.OAuth2;
 using Google.Cloud.Storage.V1;
 using Microsoft.AspNetCore.Http;
-using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using sharedservice.Models;
 using sharedservice.Repository;
 using sharedservice.UnitofWork;
 using System.Globalization;
-using ClosedXML.Excel;
 using System.Text;
-using Microsoft.Extensions.Options;
-using Microsoft.Extensions.Logging;
-using Google.Apis.Logging;
 
 namespace CloudService.Service
 {
     public class CloudS : ICloud
     {
-        private readonly IUnitOfWork _unitOfWork;
+        private readonly ICourseService _courseService;
+        private readonly IEnrollment _enrollmentService;
+        private readonly FolderStorageOptions _folderStorageOptions;
         private readonly IGenericRepository<MyFile> _genericFile;
-
+        private readonly ILogger<CloudS> _logger;
+        private readonly IUnitOfWork _unitOfWork;
+        private readonly string bucketName;
         private readonly GoogleCredential googleCredential;
         private readonly StorageClient storageClient;
-        private readonly string bucketName;
-
-        private readonly IEnrollment _enrollmentService;
-        private readonly ICourseService _courseService;
-
-        private readonly FolderStorageOptions _folderStorageOptions;
-        private readonly GCSConfi _gCSConfi;
-
-        private readonly ILogger<CloudS> _logger;
-       
         private List<string> headers;
-        public CloudS(IUnitOfWork unitOfWork, IOptions<GCSConfi> _gCSConfi, IOptions<FolderStorageOptions> options, ICourseService courseService, IEnrollment enrollment,ILogger<CloudS> logger)
+
+        public CloudS(IUnitOfWork unitOfWork, IOptions<GCSConfi> _gCSConfi, IOptions<FolderStorageOptions> options, ICourseService courseService, IEnrollment enrollment, ILogger<CloudS> logger)
         {
             _unitOfWork = unitOfWork;
             _genericFile = _unitOfWork.GetRepository<MyFile>();
@@ -51,222 +44,18 @@ namespace CloudService.Service
             _enrollmentService = enrollment;
             _courseService = courseService;
 
-           
             _folderStorageOptions = options.Value;
             headers = new List<string> { "CourseCode", "UserId", "IsEnroll", "EnrollDate" };
 
             _logger = logger;
-
         }
+
         /// <summary>
         /// Upload File to GCS
         /// </summary>
         /// <param name="imageFile">File Upload</param>
         /// <param name="fileNameForStorage">File name in google Cloud</param>
         /// <returns></returns>
-      
-        public async Task<string> UploadFileAsync(IFormFile imageFile, string fileNameForStorage)
-        {
-            string folderName = "Y";
-            string fullFilePath = $"{folderName}/{fileNameForStorage}";
-
-            using (var memoryStream = new MemoryStream())
-            {
-                await imageFile.CopyToAsync(memoryStream);
-                var dataObject = await storageClient.UploadObjectAsync(bucketName, fullFilePath, null, memoryStream);
-                return dataObject.MediaLink;
-            }
-            
-        }
-
-        /// <summary>
-        /// generate file name for storage
-        /// </summary>
-        /// <param name="fileName">file name generate</param>
-        /// <returns></returns>
-        private static string FormFileName(string fileName)
-        {
-            var fileExtension = Path.GetExtension(fileName);
-            var fileNameForStorage = $"{DateTime.Now.ToString("yyyyMMddHHmmss")}{fileExtension}";
-            return fileNameForStorage;
-        }
-
-
-        /// <summary>
-        /// Deletes a file from GCS.
-        /// </summary>
-        /// <param name="fileNameForStorage">The name of the file in the storage.</param>
-
-        public async Task DeleteFileAsync(string fileNameForStorage)
-        {
-            await storageClient.DeleteObjectAsync(bucketName, fileNameForStorage);
-        }
-
-
-        /// <summary>
-        /// get all file in database
-        /// </summary>
-        /// <returns></returns>
-
-        public IEnumerable<MyFile> getAllFile()
-        {
-            _logger.LogInformation("Y dang in Log");
-            return _genericFile.GetAll();
-        }
-        /// <summary>
-        /// Upload file to GCS
-        /// </summary>
-        /// <param name="imageFile">Image file upload </param>
-        /// <returns></returns>
-
-        //function upload file to gcs
-        public async Task<MyFile> UploadFileToGCS(IFormFile imageFile)
-        {
-
-            string fileNameForStorage = FormFileName(imageFile.FileName);
-
-            var ImageUrl = await UploadFileAsync(imageFile, fileNameForStorage);
-
-            var temp = new MyFile() { Name = fileNameForStorage, Image = ImageUrl };
-            _genericFile.Add(temp);
-            _unitOfWork.SaveChanges();
-            return temp;
-        }
-        /// <summary>
-        /// DownLoad file from GCS
-        /// </summary>
-        /// <param name="nameFile">the name of file in the storage</param>
-        /// <returns></returns>
-        public async Task<string> DownLoadFileFromGCS(string nameFile)
-        {
-            string downloadDirectory = Path.Combine(Directory.GetCurrentDirectory(), "Datadownload");
-            string localFilePath = Path.Combine(downloadDirectory, nameFile);
-            string fileNameForStorage = $"{_folderStorageOptions.NewFolder}{nameFile}";
-
-            if (!Directory.Exists(downloadDirectory))
-            {
-                Directory.CreateDirectory(downloadDirectory);
-            }
-
-            using (var fileStream = File.Create(localFilePath))
-            {
-                await storageClient.DownloadObjectAsync(bucketName, fileNameForStorage, fileStream);
-            }
-
-            return localFilePath;
-        }
-        
-
-        //create function delete file to gcs
-        public async Task<bool> DeleteFile(string fileNameForStorage)
-        {
-            try
-            {
-                string folderName = "Y";
-                string fullFilePath = $"{folderName}/{fileNameForStorage}";
-                await storageClient.DeleteObjectAsync(bucketName, fullFilePath);
-                _genericFile.Remove(_genericFile.Find(x => x.Name == fileNameForStorage).FirstOrDefault());
-                _unitOfWork.SaveChanges();
-                return true;
-            }
-            catch (Google.GoogleApiException ex) when (ex.HttpStatusCode == System.Net.HttpStatusCode.NotFound)
-            {
-
-                return false;
-            }
-
-        }
-
-
-        public async Task<dynamic?> ImportFile(string urlFile)
-        {
-         
-            string fileName = Path.GetFileName(urlFile);
-
-            //check file format RegisterCourse_<Course_code>_yyyy_mm_dd.csv
-           
-            
-            string? code = IsValidFileName(fileName);
-
-            if (code == null)
-            {
-                return "file name invalid";
-            }
-
-            //check file duplicate in GCS
-
-            if (await CheckDuplicate($"Y/course/new/{fileName}"))
-                return "file duplicate";
-
-            
-
-            //get file from gcs
-             string localFilePath = await DownLoadFileFromGCS(fileName);
-
-            try
-            {
-                if (await ImportCsvToDataBaseUseCsvHelper(localFilePath, fileName, code) == null)
-                {
-                    return null;
-                }
-            }
-            catch (Exception)
-            {
-
-                File.Delete(localFilePath);
-                await movieFileInGCS($"{_folderStorageOptions.NewFolder}{fileName}", $"{_folderStorageOptions.FailedFolder}{fileName}");
-                return null;
-               
-            }
-
-
-            return "";
-
-    
-        }
-        //move file to other folder 
-        public async Task movieFileInGCS(string source,string dest)
-        {
-            storageClient.CopyObject(bucketName, source, bucketName, dest);
-            storageClient.DeleteObject(bucketName, source);
-        }
-        //is valid file name
-        public string? IsValidFileName(string fileName)
-        {
-            //check file name start with RegisterCourse_ and end with .csv
-            if (!fileName.StartsWith("RegisterCourse_") || !fileName.EndsWith(".csv"))
-            {
-                return null;
-            }
-
-            
-            //split file name to get course code and date
-            string[] parts = fileName.Split('_');
-            if (parts.Length != 5)
-            {
-                return null;
-            }
-           
-            string courseCode = parts[1];
-            
-            string dateString = $"{parts[2]}_{parts[4].Split('.')[0]}_{parts[3]}";
-            DateTime date;
-
-            //check date format yyyy_mm_dd
-            if (!DateTime.TryParseExact(dateString, "yyyy_MM_dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out date))
-            {
-                return null;
-            }
-           
-           //check course code exist in database
-            if(_courseService.getCourstByCode(courseCode) ==  null)
-            {
-                return null;
-            }
-
-
-            return courseCode;
-        }
 
         //create function check file duplicate in GCS
         public async Task<bool> CheckDuplicate(string fileName)
@@ -290,24 +79,145 @@ namespace CloudService.Service
             }
             return false;
         }
-        public bool IsHeaderValid(string[] record)
-        {
-            string[] expectedFields = { "CourseCode", "UserId", "IsEnroll", "EnrollDate" };
 
-            return expectedFields.SequenceEqual(record);
+        //create function delete file to gcs
+        public async Task<bool> DeleteFile(string fileNameForStorage)
+        {
+            try
+            {
+                string folderName = "Y";
+                string fullFilePath = $"{folderName}/{fileNameForStorage}";
+                await storageClient.DeleteObjectAsync(bucketName, fullFilePath);
+                _genericFile.Remove(_genericFile.Find(x => x.Name == fileNameForStorage).FirstOrDefault());
+                _unitOfWork.SaveChanges();
+                return true;
+            }
+            catch (Google.GoogleApiException ex) when (ex.HttpStatusCode == System.Net.HttpStatusCode.NotFound)
+            {
+                return false;
+            }
         }
 
-        public bool IsRecordValid(CsvRecord record, string code)
+        public async Task DeleteFileAsync(string fileNameForStorage)
         {
-            return record.CourseCode == code;
+            await storageClient.DeleteObjectAsync(bucketName, fileNameForStorage);
         }
 
-       
-
-        public async Task<dynamic> ImportCsvToDataBase(string localFilePath, string fileName, string code)
+        /// <summary>
+        /// DownLoad file from GCS
+        /// </summary>
+        /// <param name="nameFile">the name of file in the storage</param>
+        /// <returns></returns>
+        public async Task<string> DownLoadFileFromGCS(string nameFile)
         {
-            
+            string downloadDirectory = Path.Combine(Directory.GetCurrentDirectory(), "Datadownload");
+            string localFilePath = Path.Combine(downloadDirectory, nameFile);
+            string fileNameForStorage = $"{_folderStorageOptions.NewFolder}{nameFile}";
 
+            if (!Directory.Exists(downloadDirectory))
+            {
+                Directory.CreateDirectory(downloadDirectory);
+            }
+
+            using (var fileStream = File.Create(localFilePath))
+            {
+                await storageClient.DownloadObjectAsync(bucketName, fileNameForStorage, fileStream);
+            }
+
+            return localFilePath;
+        }
+
+        //export csv
+        public async Task ExportCSV(dynamic list, string nameCSV)
+        {
+            using (var memoryStream = new MemoryStream())
+            using (var writer = new StreamWriter(nameCSV))
+            using (var csv = new CsvWriter(writer, CultureInfo.InvariantCulture))
+            {
+                csv.WriteRecords(list);
+                writer.Flush();
+                memoryStream.Position = 0;
+
+                var file = new FormFile(memoryStream, 0, memoryStream.Length, "file", nameCSV);
+
+                await UploadFileAsync(file, $"{_folderStorageOptions.ExportFolderCSV}{nameCSV}");
+            }
+            File.Delete(nameCSV);
+        }
+
+        //export csv and excel
+        public async Task<dynamic> ExportEnrollmentToCSV()
+        {
+            _logger.LogInformation("ExportEnRollMentToCSV");
+            IQueryable<Enrollment> listEnroll = _enrollmentService.GetAllErollments();
+            IQueryable<Course> listCourse = _courseService.GetAll();
+
+            var list = from enroll in listEnroll
+                       join course in listCourse on enroll.CouresId equals course.Id
+                       where enroll.EnrolledDate.AddMonths(3) >= DateTime.Now
+                       select new
+                       {
+                           CourseCode = course.Code,
+                           UserId = enroll.UserId ?? "",
+                           IsEnroll = true,
+                           EnrollDate = enroll.EnrolledDate,
+                       };
+
+            DateTime date = DateTime.Now;
+            string nameCSV = $"Export_Backup_Course_{date.Year}_{date.Month}_{date.Day}.csv";
+            string nameExcel = $"Export_Backup_Course_{date.Year}_{date.Month}_{date.Day}.xlsx";
+
+            Task exportCsvTask = ExportCSV(list, nameCSV);
+            Task exportExcelTask = ExportExcel(list, nameExcel);
+            await Task.WhenAll(exportCsvTask, exportExcelTask);
+            return list;
+        }
+
+        //export excel
+        public async Task ExportExcel(dynamic list, string nameExcel)
+        {
+            using (var workbook = new XLWorkbook())
+            {
+                var worksheet = workbook.Worksheets.Add("Course");
+                //add filter
+                var range = worksheet.Range($"A1:{GetColumnName(headers.Count)}1");
+                range.SetAutoFilter();
+
+                //add header name
+                for (int i = 0; i < headers.Count; i++)
+                {
+                    var columnName = GetColumnName(i + 1);
+                    worksheet.Cell($"{columnName}1").Value = headers[i];
+                }
+
+                //add data
+                int row = 2;
+                foreach (var item in list)
+                {
+                    for (int col = 0; col < headers.Count; col++)
+                    {
+                        var columnName = GetColumnName(col + 1);
+                        var value = GetValueByPropertyName(item, headers[col]);
+                        worksheet.Cell($"{columnName}{row}").Value = value;
+                    }
+                    row++;
+                }
+
+                workbook.SaveAs(nameExcel);
+                var file = new FormFile(new MemoryStream(), 0, 0, "file", nameExcel);
+                await UploadFileAsync(file, $"{_folderStorageOptions.exportFolderEx}{nameExcel}");
+            }
+            File.Delete(nameExcel);
+        }
+
+        public IEnumerable<MyFile> getAllFile()
+        {
+            _logger.LogInformation("Y dang in Log");
+            return _genericFile.GetAll();
+        }
+
+        public async Task<dynamic?> ImportCsvToDataBase(string localFilePath, string fileName, string code)
+        {
             using (var reader = new StreamReader(localFilePath))
             {
                 var list = new List<string>();
@@ -326,7 +236,7 @@ namespace CloudService.Service
                         if (values[0] != "CourseCode" || values[1] != "UserId" || values[2] != "IsEnroll" || values[3] != "EnrollDate")
                         {
                             //if header file invalid then move file to folder failed
-                            await movieFileInGCS($"{_folderStorageOptions.NewFolder}{fileName}", $"{_folderStorageOptions.FailedFolder}{fileName}");
+                            await MoveFileInGCS($"{_folderStorageOptions.NewFolder}{fileName}", $"{_folderStorageOptions.FailedFolder}{fileName}");
                             return null;
                         }
 
@@ -351,7 +261,6 @@ namespace CloudService.Service
                     {
                         continue;
                     }
-
 
                     //if  CourseCode + userId duplicate in file then continue
 
@@ -384,14 +293,14 @@ namespace CloudService.Service
                         DateTime dateTime = values[3] == "" ? DateTime.Now : DateTime.Parse(values[3]);
                         await _enrollmentService.AddEnrollment(request, dateTime);
                     }
-
                 }
                 //if completed => move file to folder completed
-                
-                await movieFileInGCS($"{_folderStorageOptions.NewFolder}{fileName}", $"{_folderStorageOptions.CompletedFolder}{fileName}");
+
+                await MoveFileInGCS($"{_folderStorageOptions.NewFolder}{fileName}", $"{_folderStorageOptions.CompletedFolder}{fileName}");
                 return list;
             }
         }
+
         public async Task<dynamic> ImportCsvToDataBaseUseCsvHelper(string localFilePath, string fileName, string code)
         {
             var list = new List<string>();
@@ -403,27 +312,25 @@ namespace CloudService.Service
                 csv.Context.RegisterClassMap<CsvRecordMap>();
                 await csv.ReadAsync();
 
-
                 if (csv.Configuration.Delimiter != ";" || !csv.ReadHeader() || !IsHeaderValid(csv.HeaderRecord))
                 {
-                    await movieFileInGCS($"{_folderStorageOptions.NewFolder}{fileName}", $"{_folderStorageOptions.FailedFolder}{fileName}");
+                    await MoveFileInGCS($"{_folderStorageOptions.NewFolder}{fileName}", $"{_folderStorageOptions.FailedFolder}{fileName}");
                     return null;
                 }
-                
+
                 while (await csv.ReadAsync())
                 {
                     var record = csv.GetRecord<CsvRecord>();
-                   
+
                     if (record.GetType().GetProperties().Length != 4)
                     {
-                        await movieFileInGCS($"{_folderStorageOptions.NewFolder}{fileName}", $"{_folderStorageOptions.FailedFolder}{fileName}");
+                        await MoveFileInGCS($"{_folderStorageOptions.NewFolder}{fileName}", $"{_folderStorageOptions.FailedFolder}{fileName}");
                         return null;
                     }
                     if (!IsRecordValid(record, code))
                     {
                         continue;
                     }
-
 
                     var response = await httpClient.GetAsync($"https://localhost:7286/api/Authenticate/checkUser/{record.UserId}");
 
@@ -459,62 +366,156 @@ namespace CloudService.Service
                 }
             }
 
-            await movieFileInGCS($"{_folderStorageOptions.NewFolder}{fileName}", $"{_folderStorageOptions.CompletedFolder}{fileName}");
+            await MoveFileInGCS($"{_folderStorageOptions.NewFolder}{fileName}", $"{_folderStorageOptions.CompletedFolder}{fileName}");
             return list;
         }
 
-        //export csv and excel
-        public  async Task<dynamic> ExportEnRollMentToCSV()
+        public async Task<dynamic?> ImportFile(string urlFile)
         {
-            _logger.LogInformation("ExportEnRollMentToCSV");
-            IQueryable<Enrollment> listEnroll =  _enrollmentService.GetAllErollments();
-            IQueryable<Course> listCourse =  _courseService.GetAll();
+            string fileName = Path.GetFileName(urlFile);
 
-           
-            var list = from enroll in listEnroll
-                       join course in listCourse on enroll.CouresId equals course.Id 
-                       where enroll.EnrolledDate.AddMonths(3) >= DateTime.Now
-                       select new
-                       {
-                           CourseCode = course.Code,
-                           UserId = enroll.UserId??"",
-                           IsEnroll = true,
-                           EnrollDate = enroll.EnrolledDate,
-                       };
+            //check file format RegisterCourse_<Course_code>_yyyy_mm_dd.csv
 
-            DateTime date = DateTime.Now;
-            string nameCSV = $"Export_Backup_Course_{date.Year}_{date.Month}_{date.Day}.csv";
-            string nameExcel = $"Export_Backup_Course_{date.Year}_{date.Month}_{date.Day}.xlsx";
+            string? code = IsValidFileName(fileName);
 
+            if (code == null)
+            {
+                return "file name invalid";
+            }
 
-            Task exportCsvTask = ExportCSV(list, nameCSV);
-            Task exportExcelTask = ExportExcel(list, nameExcel);
-            await Task.WhenAll(exportCsvTask, exportExcelTask);
-            return list;
-           
+            //check file duplicate in GCS
+
+            if (await CheckDuplicate($"Y/course/new/{fileName}"))
+                return "file duplicate";
+
+            //get file from gcs
+            string localFilePath = await DownLoadFileFromGCS(fileName);
+
+            try
+            {
+                if (await ImportCsvToDataBaseUseCsvHelper(localFilePath, fileName, code) == null)
+                {
+                    return null;
+                }
+            }
+            catch (Exception)
+            {
+                File.Delete(localFilePath);
+                await MoveFileInGCS($"{_folderStorageOptions.NewFolder}{fileName}", $"{_folderStorageOptions.FailedFolder}{fileName}");
+                return null;
+            }
+
+            return "";
         }
-        //export csv
-        public async Task  ExportCSV(dynamic list, string nameCSV)
+
+        public bool IsHeaderValid(string[] record)
         {
-           
+            string[] expectedFields = { "CourseCode", "UserId", "IsEnroll", "EnrollDate" };
+
+            return expectedFields.SequenceEqual(record);
+        }
+
+        public bool IsRecordValid(CsvRecord record, string code)
+        {
+            return record.CourseCode == code;
+        }
+
+        //is valid file name
+        public string? IsValidFileName(string fileName)
+        {
+            //check file name start with RegisterCourse_ and end with .csv
+            if (!fileName.StartsWith("RegisterCourse_") || !fileName.EndsWith(".csv"))
+            {
+                return null;
+            }
+
+            //split file name to get course code and date
+            string[] parts = fileName.Split('_');
+            if (parts.Length != 5)
+            {
+                return null;
+            }
+
+            string courseCode = parts[1];
+
+            string dateString = $"{parts[2]}_{parts[4].Split('.')[0]}_{parts[3]}";
+            DateTime date;
+
+            //check date format yyyy_mm_dd
+            if (!DateTime.TryParseExact(dateString, "yyyy_MM_dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out date))
+            {
+                return null;
+            }
+
+            //check course code exist in database
+            if (_courseService.getCourstByCode(courseCode) == null)
+            {
+                return null;
+            }
+
+            return courseCode;
+        }
+
+        //move file to other folder
+        public async Task MoveFileInGCS(string source, string dest)
+        {
+            storageClient.CopyObject(bucketName, source, bucketName, dest);
+            storageClient.DeleteObject(bucketName, source);
+        }
+
+        public async Task<string> UploadFileAsync(IFormFile imageFile, string fileNameForStorage)
+        {
+            string folderName = "Y";
+            string fullFilePath = $"{folderName}/{fileNameForStorage}";
 
             using (var memoryStream = new MemoryStream())
-            using (var writer = new StreamWriter(nameCSV))
-            using (var csv = new CsvWriter(writer, CultureInfo.InvariantCulture))
             {
-                csv.WriteRecords(list);
-                writer.Flush();
-                memoryStream.Position = 0;
-
-                var file = new FormFile(memoryStream, 0, memoryStream.Length, "file", nameCSV);
-
-                await UploadFileAsync(file, $"{_folderStorageOptions.ExportFolderCSV}{nameCSV}");
-
+                await imageFile.CopyToAsync(memoryStream);
+                var dataObject = await storageClient.UploadObjectAsync(bucketName, fullFilePath, null, memoryStream);
+                return dataObject.MediaLink;
             }
-            File.Delete(nameCSV);
         }
+
+        //function upload file to gcs
+        public async Task<MyFile> UploadFileToGCS(IFormFile imageFile)
+        {
+            string fileNameForStorage = FormFileName(imageFile.FileName);
+
+            var ImageUrl = await UploadFileAsync(imageFile, fileNameForStorage);
+
+            var temp = new MyFile() { Name = fileNameForStorage, Image = ImageUrl };
+            _genericFile.Add(temp);
+            _unitOfWork.SaveChanges();
+            return temp;
+        }
+
+        /// <summary>
+        /// generate file name for storage
+        /// </summary>
+        /// <param name="fileName">file name generate</param>
+        /// <returns></returns>
+        private static string FormFileName(string fileName)
+        {
+            var fileExtension = Path.GetExtension(fileName);
+            var fileNameForStorage = $"{DateTime.Now.ToString("yyyyMMddHHmmss")}{fileExtension}";
+            return fileNameForStorage;
+        }
+
+        /// <summary>
+        /// Deletes a file from GCS.
+        /// </summary>
+        /// <param name="fileNameForStorage">The name of the file in the storage.</param>
+        /// <summary>
+        /// get all file in database
+        /// </summary>
+        /// <returns></returns>
+        /// <summary>
+        /// Upload file to GCS
+        /// </summary>
+        /// <param name="imageFile">Image file upload </param>
+        /// <returns></returns>
         //get column name from number column
-        string GetColumnName(int columnNumber)
+        private string GetColumnName(int columnNumber)
         {
             StringBuilder columnName = new StringBuilder();
             int dividend = columnNumber;
@@ -528,53 +529,12 @@ namespace CloudService.Service
 
             return columnName.ToString();
         }
+
         //get value by property name
         private object GetValueByPropertyName(object obj, string propertyName)
         {
             var prop = obj.GetType().GetProperty(propertyName);
             return prop?.GetValue(obj);
         }
-
-        //export excel
-        public async Task ExportExcel(dynamic list,string nameExcel)
-        {
-              using (var workbook = new XLWorkbook())
-            {
-                var worksheet = workbook.Worksheets.Add("Course");
-                //add filter
-                var range = worksheet.Range($"A1:{GetColumnName(headers.Count)}1");
-                range.SetAutoFilter();
-
-                //add header name
-                for (int i = 0; i < headers.Count; i++)
-                {
-                    var columnName = GetColumnName(i + 1);
-                    worksheet.Cell($"{columnName}1").Value = headers[i];
-                }
-
-                //add data
-                int row = 2;
-                foreach (var item in list)
-                {
-                    for (int col = 0; col < headers.Count; col++)
-                    {
-                        var columnName = GetColumnName(col + 1);
-                        var value = GetValueByPropertyName(item, headers[col]);
-                        worksheet.Cell($"{columnName}{row}").Value = value;
-                    }
-                    row++;
-                }
-
-
-
-                workbook.SaveAs(nameExcel);
-                var file = new FormFile(new MemoryStream(), 0, 0, "file", nameExcel);
-                await UploadFileAsync(file, $"{_folderStorageOptions.exportFolderEx}{nameExcel}");
-            }
-            File.Delete(nameExcel);
-        }
-
-
-
     }
 }

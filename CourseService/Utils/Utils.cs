@@ -5,7 +5,7 @@ namespace CourseService.Utils
 {
     public class Utils
     {
-        public static (string sqlFinal, List<MySqlParameter> parameters) GenerateSql(string[] nameProperties , List<(int id, Dictionary<string, dynamic> data)> items)
+        public static (string sqlFinal, List<MySqlParameter> parameters) GenerateSql(string[] nameProperties, List<(int id, Dictionary<string, dynamic> data)> items)
         {
             StringBuilder sqlBuilder = new StringBuilder();
             List<MySqlParameter> parameters = new List<MySqlParameter>();
@@ -18,7 +18,7 @@ namespace CourseService.Utils
 
                 sqlBuilder.AppendLine($"{propertyName} = CASE");
 
-                foreach (var item in  items)
+                foreach (var item in items)
                 {
                     if (item.data.TryGetValue(propertyName, out dynamic value))
                     {
@@ -31,7 +31,6 @@ namespace CourseService.Utils
                     }
                 }
                 sqlBuilder.AppendLine($" ELSE {propertyName} END,");
-
             }
 
             sqlBuilder.Length -= 3;

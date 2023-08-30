@@ -1,25 +1,23 @@
-
+using CloudService.Interface;
+using CloudService.model;
+using CloudService.Service;
+using CourseService.Interface;
+using CourseService.Service;
+using CronService.Interface;
+using CronService.Service;
+using EnrollmentService.Interface;
+using EnrollmentService.Service;
+using Hangfire;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
-using System.Text;
-using sharedservice.UnitofWork;
-using sharedservice.Models;
-using CourseService.Interface;
-using CourseService.Service;
-using EnrollmentService.Interface;
-using EnrollmentService.Service;
-using CloudService.Service;
-using CloudService.Interface;
-using CloudService.model;
 using Serilog;
-using Serilog.Sinks.Elasticsearch;
 using Serilog.Exceptions;
+using Serilog.Sinks.Elasticsearch;
+using sharedservice.Models;
+using sharedservice.UnitofWork;
 using System.Reflection;
-using Hangfire;
-using CronService.Service;
-using CronService.Interface;
-
+using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -32,9 +30,6 @@ builder.Services.AddControllers();
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
-
-
-
 
 builder.Services.AddDbContext<dbContext>(o => o.UseMySql(builder.Configuration.GetConnectionString("DefaultConnection"), Microsoft.EntityFrameworkCore.ServerVersion.Parse("5.7.43-mysql")));
 
@@ -78,7 +73,6 @@ builder.Services.AddHangfire(config =>
 
 builder.Services.AddHangfireServer();
 
-
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
@@ -87,13 +81,9 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI();
     app.UseHangfireDashboard();
-   
 }
 
-
 app.UseHttpsRedirection();
-
-
 
 app.UseAuthentication();
 app.UseAuthorization();

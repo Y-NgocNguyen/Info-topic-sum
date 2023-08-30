@@ -1,13 +1,10 @@
-﻿
-using Hangfire;
-using Hangfire.Common;
-
-namespace Course_service.Job
+﻿namespace Course_service.Job
 {
     public class MyJob
     {
         private readonly ILogger<MyJob> logger;
-       public MyJob(ILogger<MyJob> logger)
+
+        public MyJob(ILogger<MyJob> logger)
         {
             this.logger = logger;
         }
@@ -17,7 +14,5 @@ namespace Course_service.Job
         {
             logger.LogInformation("RunEveryMinute");
         }
-  
-        
     }
 }

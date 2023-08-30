@@ -1,7 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-
-namespace sharedservice.Models
+﻿namespace sharedservice.Models
 {
     public partial class Enrollment
     {
@@ -10,6 +7,6 @@ namespace sharedservice.Models
         public string UserId { get; set; }
         public DateTime EnrolledDate { get; set; }
 
-       /* public virtual Course Coures { get; set; } = null!;*/
+        /* public virtual Course Coures { get; set; } = null!;*/
     }
 }

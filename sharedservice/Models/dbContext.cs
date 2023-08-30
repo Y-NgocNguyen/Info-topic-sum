@@ -1,7 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Metadata;
+﻿using Microsoft.EntityFrameworkCore;
 
 namespace sharedservice.Models
 {
@@ -18,7 +15,8 @@ namespace sharedservice.Models
 
         public virtual DbSet<Course> Courses { get; set; } = null!;
         public virtual DbSet<Enrollment> Enrollments { get; set; } = null!;
-        public virtual DbSet<MyFile> Files { get; set; } 
+        public virtual DbSet<MyFile> Files { get; set; }
+
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             modelBuilder.UseCollation("utf8mb4_unicode_ci")
@@ -52,17 +50,11 @@ namespace sharedservice.Models
                 entity.Property(e => e.EnrolledDate).HasColumnType("datetime");
 
                 entity.Property(e => e.UserId).HasColumnType("varchar(255)");
-
-               /* entity.HasOne(d => d.Coures)
-                    .WithMany(p => p.Enrollments)
-                    .HasForeignKey(d => d.CouresId)
-                    .OnDelete(DeleteBehavior.ClientSetNull)
-                    .HasConstraintName("FK_course");*/
             });
 
-            OnModelCreatingPartial(modelBuilder);
+           /* OnModelCreatingPartial(modelBuilder);*/
         }
 
-        partial void OnModelCreatingPartial(ModelBuilder modelBuilder);
+       /* partial void OnModelCreatingPartial(ModelBuilder modelBuilder);*/
     }
 }

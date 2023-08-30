@@ -1,5 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc.Filters;
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Filters;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
@@ -12,23 +12,20 @@ namespace Course_service.Filter
         private readonly IConfiguration _configuration;
         private readonly ILogger<JwtFilter> _logger;
         private string _roles;
+
         public JwtFilter(IConfiguration configuration, ILogger<JwtFilter> logger, string roles)
         {
             _configuration = configuration;
             _logger = logger;
             _roles = roles;
-
         }
-
 
         public void OnActionExecuted(ActionExecutedContext context)
         {
-
         }
 
         public void OnActionExecuting(ActionExecutingContext context)
         {
-
             var token = context.HttpContext.Request.Headers["Authorization"].FirstOrDefault()?.Split(" ").Last();
             if (token != null)
             {
@@ -39,7 +36,6 @@ namespace Course_service.Filter
 
                     var tokenValidationParameters = new TokenValidationParameters
                     {
-
                         ValidateIssuerSigningKey = true,
                         IssuerSigningKey = new SymmetricSecurityKey(key),
 
@@ -71,7 +67,6 @@ namespace Course_service.Filter
                     {
                         _logger.LogInformation($" {claim.Type} : {claim.Value}");
                     }
-
                 }
                 catch (Exception ex)
                 {
@@ -84,8 +79,6 @@ namespace Course_service.Filter
             {
                 context.Result = new UnauthorizedResult();
             }
-
-
         }
     }
 }

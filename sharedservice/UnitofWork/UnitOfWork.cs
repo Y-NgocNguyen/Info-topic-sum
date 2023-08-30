@@ -1,15 +1,13 @@
-﻿
-
-using sharedservice.Models;
+﻿using sharedservice.Models;
 using sharedservice.Repository;
 using System.Reflection;
 
 namespace sharedservice.UnitofWork
 {
-     public class UnitOfWork : IUnitOfWork
+    public class UnitOfWork : IUnitOfWork
     {
         private readonly dbContext _dbContext;
-        
+
         public UnitOfWork(dbContext dbContext)
         {
             _dbContext = dbContext;
@@ -19,16 +17,16 @@ namespace sharedservice.UnitofWork
         {
             return new GenericRepository<T>(_dbContext);
         }
+
         public void BeginTransaction()
         {
             _dbContext.Database.BeginTransaction();
-            
         }
 
         public void Commit()
         {
-             _dbContext.SaveChanges();
-             _dbContext.Database.CurrentTransaction.Commit();
+            _dbContext.SaveChanges();
+            _dbContext.Database.CurrentTransaction.Commit();
         }
 
         public void Dispose()
@@ -43,8 +41,9 @@ namespace sharedservice.UnitofWork
 
         public void SaveChanges()
         {
-             _dbContext.SaveChanges();
+            _dbContext.SaveChanges();
         }
+
         public void SetPropertyValue(object entity, string propertyName, object value)
         {
             PropertyInfo property = entity.GetType().GetProperty(propertyName);
@@ -53,6 +52,5 @@ namespace sharedservice.UnitofWork
                 property.SetValue(entity, value);
             }
         }
-
     }
 }

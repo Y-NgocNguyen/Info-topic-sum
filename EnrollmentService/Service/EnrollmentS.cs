@@ -3,9 +3,7 @@ using EnrollmentService.Unit;
 using sharedservice.Models;
 using sharedservice.Repository;
 using sharedservice.UnitofWork;
-using System.Net;
 using System.Net.Http.Json;
-using System.Security;
 using System.Text;
 
 namespace EnrollmentService.Service
@@ -22,12 +20,13 @@ namespace EnrollmentService.Service
             _dbEn = _unitOfWork.GetRepository<Enrollment>();
             _dbCou = _unitOfWork.GetRepository<Course>();
         }
+
         /// <summary>
         /// Adds an enrollment for a course based on the provided request.
         /// </summary>
         /// <param name="request">The enrollment request containing the course and user IDs.</param>
         /// <returns>An ActionResult </returns>
-        public async Task<Enrollment> AddEnrollment(Request request,DateTime dateTime)
+        public async Task<Enrollment> AddEnrollment(Request request, DateTime dateTime)
         {
             // check User exit
             var httpClient = new HttpClient();
@@ -36,11 +35,10 @@ namespace EnrollmentService.Service
             if (!response.IsSuccessStatusCode)
             {
                 return null;
-               /* return new HttpResponseMessage(HttpStatusCode.NotFound)
-                {
-                    ReasonPhrase = "User not found"
-                };*/
-
+                /* return new HttpResponseMessage(HttpStatusCode.NotFound)
+                 {
+                     ReasonPhrase = "User not found"
+                 };*/
             }
 
             // check unique
@@ -64,26 +62,24 @@ namespace EnrollmentService.Service
 
             //check course exit
             var responseContent = await response.Content.ReadFromJsonAsync<User>();
-            Course? course = _dbCou.Find(e=>e.Id == request.cId).FirstOrDefault();
+            Course? course = _dbCou.Find(e => e.Id == request.cId).FirstOrDefault();
 
-            if(course == null)
+            if (course == null)
             {
                 return null;
-               /* return new HttpResponseMessage(HttpStatusCode.NotFound)
-                {
-                    ReasonPhrase = "exting courst"
-                };*/
-                
+                /* return new HttpResponseMessage(HttpStatusCode.NotFound)
+                 {
+                     ReasonPhrase = "exting courst"
+                 };*/
             }
             //check user's money
             if (responseContent.balanceAccount < course.Price)
             {
                 return null;
-               /* return new HttpResponseMessage(HttpStatusCode.NotFound)
-                {
-                    ReasonPhrase = "user not money"
-                };*/
-             
+                /* return new HttpResponseMessage(HttpStatusCode.NotFound)
+                 {
+                     ReasonPhrase = "user not money"
+                 };*/
             }
 
             //call Api sub money
@@ -102,9 +98,8 @@ namespace EnrollmentService.Service
                 EnrolledDate = dateTime,
                 CouresId = request.cId,
                 UserId = request.uId
-             
             };
-           
+
             _dbEn.Add(enrollment);
             _unitOfWork.SaveChanges();
             return enrollment;
@@ -114,6 +109,7 @@ namespace EnrollmentService.Service
         {
             return _dbEn.GetAll();
         }
+
         /// <summary>
         /// Removes an enrollment for a course based on the provided request.
         /// </summary>
@@ -127,12 +123,11 @@ namespace EnrollmentService.Service
             Enrollment? enrollment = _dbEn.Find(e => e.UserId == request.uId && e.CouresId == request.cId).FirstOrDefault();
             if (enrollment == null)
             {
-                
                 return false;
             }
             // call api add money
             var content = new StringContent(request.cId.ToString(), Encoding.UTF8, "application/json");
-            
+
             string url = $"https://localhost:7286/api/Authenticate/UserBalance/{request.uId}?d=c";
             var response2 = await httpClient.PatchAsync(url, content);
 
@@ -142,10 +137,9 @@ namespace EnrollmentService.Service
             }
 
             _dbEn.Remove(enrollment);
-            
+
             _unitOfWork.SaveChanges();
             return true;
-           
         }
     }
 }

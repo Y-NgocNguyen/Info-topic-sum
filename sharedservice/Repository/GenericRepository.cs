@@ -1,7 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using MySqlConnector;
 using Newtonsoft.Json.Linq;
-using Pomelo.EntityFrameworkCore.MySql.Query.Internal;
 using System.Linq.Expressions;
 using System.Reflection;
 
@@ -17,10 +16,12 @@ namespace sharedservice.Repository
             _dbContext = dbContext;
             _dbSet = _dbContext.Set<T>();
         }
+
         public IQueryable<T> GetAll()
         {
             return _dbSet;
         }
+
         public void Add(T entity)
         {
             _dbSet.Add(entity);
@@ -28,15 +29,13 @@ namespace sharedservice.Repository
 
         public void AddRange(IEnumerable<T> entities)
         {
-             _dbSet.AddRange(entities);
+            _dbSet.AddRange(entities);
         }
 
         public IQueryable<T> Find(Expression<Func<T, bool>> expression)
         {
-           return _dbSet.Where(expression);
+            return _dbSet.Where(expression);
         }
-
-        
 
         public T GetById(int id)
         {
@@ -50,12 +49,11 @@ namespace sharedservice.Repository
 
         public void RemoveRange(IEnumerable<T> entities)
         {
-            _dbSet.RemoveRange(entities);       
+            _dbSet.RemoveRange(entities);
         }
 
         public void UpdateRangeOne(List<T> targetData, Dictionary<string, object> columnValues)
         {
-           
             foreach (T course in targetData)
             {
                 foreach (KeyValuePair<string, object> columnValue in columnValues)
@@ -72,13 +70,14 @@ namespace sharedservice.Repository
                 }
             }
         }
+
         public void UpdateRangeAny(IEnumerable<T> entities)
         {
             _dbSet.UpdateRange(entities);
         }
- 
+
         public int UpdateSQLRaw(T item)
-        {    
+        {
             string elementUpdate = "";
             object elementId = "";
 
@@ -102,23 +101,21 @@ namespace sharedservice.Repository
             }
             elementUpdate = elementUpdate.Substring(0, elementUpdate.Length - 1);
 
-            string sql = 
+            string sql =
                 $"UPDATE {typeof(T).Name}s SET {elementUpdate} WHERE Id = @Id";
             parameters.Add(new MySqlParameter("@Id", elementId));
 
             return _dbContext.Database.ExecuteSqlRaw(sql, parameters);
         }
 
-        public int RunSqlRaw(string sql,List<MySqlParameter> parameters)
+        public int RunSqlRaw(string sql, List<MySqlParameter> parameters)
         {
             return _dbContext.Database.ExecuteSqlRaw(sql, parameters.ToArray());
         }
 
         /*public DbContext testContext()
         {
-
             return _dbContext.Database;
         }*/
     }
-
 }

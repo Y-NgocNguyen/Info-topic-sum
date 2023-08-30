@@ -2,7 +2,6 @@
 using EnrollmentService.Unit;
 using Microsoft.AspNetCore.Mvc;
 using sharedservice.Models;
-using System.Text;
 
 namespace Course_service.Controllers
 {
@@ -10,19 +9,22 @@ namespace Course_service.Controllers
     public class EnrollmentsController : Controller
     {
         private readonly IEnrollment _db;
+
         public EnrollmentsController(IEnrollment enrollment)
         {
             _db = enrollment;
         }
+
         [HttpGet]
         public ActionResult<IEnumerable<Enrollment>> GetAllErollments()
         {
             return Ok(_db.GetAllErollments());
         }
+
         [HttpPost]
-        public async Task<ActionResult> AddEnrollment([FromBody] Request request )
+        public async Task<ActionResult> AddEnrollment([FromBody] Request request)
         {
-            await _db.AddEnrollment(request,DateTime.Now);
+            await _db.AddEnrollment(request, DateTime.Now);
             return Ok();
         }
 
@@ -32,7 +34,5 @@ namespace Course_service.Controllers
             await _db.removeEnrollment(request);
             return Ok();
         }
-
     }
-    
 }

@@ -1,14 +1,7 @@
-﻿
-using CsvHelper.Configuration;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using CsvHelper.Configuration;
 
 namespace CloudService.model
 {
-   
     public class CsvRecord
     {
         public string CourseCode { get; set; }
@@ -16,6 +9,7 @@ namespace CloudService.model
         public bool? IsEnroll { get; set; }
         public DateTime? EnrollDate { get; set; }
     }
+
     public sealed class CsvRecordMap : ClassMap<CsvRecord>
     {
         public CsvRecordMap()
@@ -24,11 +18,6 @@ namespace CloudService.model
             Map(m => m.UserId).Name("UserId");
             Map(m => m.IsEnroll).Name("IsEnroll");
             Map(m => m.EnrollDate).Name("EnrollDate");
-
         }
-
-       
-
     }
-
 }

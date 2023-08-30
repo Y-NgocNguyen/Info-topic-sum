@@ -7,7 +7,6 @@ namespace Course_service.Filter
     {
         public override void OnActionExecuting(ActionExecutingContext context)
         {
-
             //only accept file csv and excel
             var file = context.HttpContext.Request.Form.Files[0];
             var fileExtension = Path.GetExtension(file.FileName);
