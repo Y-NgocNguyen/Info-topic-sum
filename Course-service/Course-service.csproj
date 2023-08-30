@@ -11,6 +11,8 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Hangfire.AspNetCore" Version="1.8.5" />
+    <PackageReference Include="Hangfire.InMemory" Version="0.5.1" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="6.0.20" />
     <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="6.0.0" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="6.0.21">
@@ -30,6 +32,7 @@
   <ItemGroup>
     <ProjectReference Include="..\CloudService\CloudService.csproj" />
     <ProjectReference Include="..\CourseService\CourseService.csproj" />
+    <ProjectReference Include="..\CronService\CronService.csproj" />
     <ProjectReference Include="..\EnrollmentService\EnrollmentService.csproj" />
     <ProjectReference Include="..\sharedservice\sharedservice.csproj" />
   </ItemGroup>

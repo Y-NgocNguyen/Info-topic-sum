@@ -302,7 +302,7 @@ namespace CloudService.Service
             return record.CourseCode == code;
         }
 
-
+       
 
         public async Task<dynamic> ImportCsvToDataBase(string localFilePath, string fileName, string code)
         {
@@ -466,7 +466,7 @@ namespace CloudService.Service
         //export csv and excel
         public  async Task<dynamic> ExportEnRollMentToCSV()
         {
-              
+            _logger.LogInformation("ExportEnRollMentToCSV");
             IQueryable<Enrollment> listEnroll =  _enrollmentService.GetAllErollments();
             IQueryable<Course> listCourse =  _courseService.GetAll();
 
@@ -569,7 +569,7 @@ namespace CloudService.Service
 
                 workbook.SaveAs(nameExcel);
                 var file = new FormFile(new MemoryStream(), 0, 0, "file", nameExcel);
-                await UploadFileAsync(file, $"{_folderStorageOptions.ExportFolderCSV}{nameExcel}");
+                await UploadFileAsync(file, $"{_folderStorageOptions.exportFolderEx}{nameExcel}");
             }
             File.Delete(nameExcel);
         }

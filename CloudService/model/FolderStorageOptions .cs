@@ -12,6 +12,6 @@ namespace CloudService.model
         public string FailedFolder { get; set; }
         public string CompletedFolder { get; set; }
         public string ExportFolderCSV { get; set; }
-        public string ExportFolderExcel { get; set; }
+        public string exportFolderEx { get; set; }
     }
 }

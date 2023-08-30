@@ -15,6 +15,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "sharedservice", "sharedserv
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "CloudService", "CloudService\CloudService.csproj", "{64FFFA9A-E0B9-4C2D-B09E-16A710E61149}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CronService", "CronService\CronService.csproj", "{3404A4AA-485B-4374-8393-187AD28AE769}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -45,6 +47,10 @@ Global
 		{64FFFA9A-E0B9-4C2D-B09E-16A710E61149}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{64FFFA9A-E0B9-4C2D-B09E-16A710E61149}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{64FFFA9A-E0B9-4C2D-B09E-16A710E61149}.Release|Any CPU.Build.0 = Release|Any CPU
+		{3404A4AA-485B-4374-8393-187AD28AE769}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3404A4AA-485B-4374-8393-187AD28AE769}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3404A4AA-485B-4374-8393-187AD28AE769}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3404A4AA-485B-4374-8393-187AD28AE769}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

@@ -16,6 +16,10 @@ using Serilog;
 using Serilog.Sinks.Elasticsearch;
 using Serilog.Exceptions;
 using System.Reflection;
+using Hangfire;
+using CronService.Service;
+using CronService.Interface;
+
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -30,6 +34,8 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
 
+
+
 builder.Services.AddDbContext<dbContext>(o => o.UseMySql(builder.Configuration.GetConnectionString("DefaultConnection"), Microsoft.EntityFrameworkCore.ServerVersion.Parse("5.7.43-mysql")));
 
 builder.Services.Configure<FolderStorageOptions>(builder.Configuration.GetSection("FolderStorageOptions"));
@@ -39,6 +45,7 @@ builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 builder.Services.AddScoped<ICourseService, CourseServiceB>();
 builder.Services.AddScoped<IEnrollment, EnrollmentS>();
 builder.Services.AddScoped<ICloud, CloudS>();
+builder.Services.AddScoped<ICronService, CronS>();
 
 builder.Services.AddAuthentication(options =>
 {
@@ -64,6 +71,13 @@ builder.Services.AddAuthentication(options =>
     })
     ;
 
+builder.Services.AddHangfire(config =>
+{
+    config.UseInMemoryStorage();
+});
+
+builder.Services.AddHangfireServer();
+
 
 var app = builder.Build();
 
@@ -72,9 +86,14 @@ if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
+    app.UseHangfireDashboard();
+   
 }
 
+
 app.UseHttpsRedirection();
+
+
 
 app.UseAuthentication();
 app.UseAuthorization();
@@ -82,36 +101,6 @@ app.UseAuthorization();
 app.MapControllers();
 
 app.Run();
-
-/*void ConfigureLogging()
-{
-    var environment = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT");
-
-    var configuration = new ConfigurationBuilder()
-        .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
-        .AddJsonFile(
-            $"appsettings.{Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT")}.json",
-            optional: true)
-        .Build();
-
-    var uri = new Uri(configuration["ElasticConfiguration:Uri"]);
-    var indexFormat = $"{Assembly.GetExecutingAssembly().GetName().Name.ToLower().Replace(".", "-")}-{environment?.ToLower().Replace(".", "-")}-{DateTime.UtcNow:yyyy-MM}";
-
-    Log.Logger = new LoggerConfiguration()
-        .Enrich.FromLogContext()
-        .Enrich.WithExceptionDetails()
-        .WriteTo.Debug()
-        .WriteTo.Console()
-        .WriteTo.Elasticsearch(new ElasticsearchSinkOptions(uri)
-        {
-            AutoRegisterTemplate = true,
-            IndexFormat = indexFormat
-        })
-        .Enrich.WithProperty("Environment", environment)
-        .ReadFrom.Configuration(configuration)
-        .CreateLogger();
-}
-*/
 
 void ConfigureLogging()
 {
